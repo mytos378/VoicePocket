@@ -9,7 +9,6 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,9 +36,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import java.util.Locale
+import com.roberto.voicepocket.data.local.IdeaEntity
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.HorizontalDivider
 
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    ideas: List<IdeaEntity>,
+    onIdeaRecognized: (String) -> Unit
+) {
     val context = LocalContext.current
 
     var isListening by remember { mutableStateOf(false) }
@@ -102,12 +110,16 @@ fun HomeScreen() {
                         SpeechRecognizer.RESULTS_RECOGNITION
                     )
 
-                    recognizedText = matches?.firstOrNull().orEmpty()
+                    recognizedText = matches
+                        ?.firstOrNull()
+                        .orEmpty()
+                        .trim()
 
                     statusMessage = if (recognizedText.isBlank()) {
                         "No se reconoció ninguna frase"
                     } else {
-                        "Idea capturada"
+                        onIdeaRecognized(recognizedText)
+                        "Idea guardada"
                     }
                 }
 
@@ -179,22 +191,23 @@ fun HomeScreen() {
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            Spacer(modifier = Modifier.height(32.dp))
+
             Text(
                 text = "VoicePocket",
                 style = MaterialTheme.typography.headlineLarge
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = "Nunca pierdas una idea",
                 style = MaterialTheme.typography.bodyLarge
             )
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
             FloatingActionButton(
                 onClick = ::handleMicrophoneClick,
@@ -215,7 +228,7 @@ fun HomeScreen() {
                 )
             }
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             Text(
                 text = statusMessage,
@@ -224,13 +237,54 @@ fun HomeScreen() {
             )
 
             if (recognizedText.isNotBlank()) {
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(
                     text = recognizedText,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Mis ideas",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (ideas.isEmpty()) {
+                Text(
+                    text = "Todavía no tienes ideas guardadas.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                ) {
+                    items(
+                        items = ideas,
+                        key = { idea -> idea.id }
+                    ) { idea ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = idea.text,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(16.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+                }
             }
         }
     }
