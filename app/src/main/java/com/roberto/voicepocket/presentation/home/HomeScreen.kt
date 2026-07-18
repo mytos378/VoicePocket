@@ -22,11 +22,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -37,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,6 +73,10 @@ fun HomeScreen(
     var recognizedText by remember { mutableStateOf("") }
     var statusMessage by remember { mutableStateOf("Pulsa para hablar") }
 
+    var searchQuery by rememberSaveable {
+        mutableStateOf("")
+    }
+
     var ideaPendingDeletion by remember {
         mutableStateOf<IdeaEntity?>(null)
     }
@@ -78,6 +87,21 @@ fun HomeScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    val filteredIdeas = remember(ideas, searchQuery) {
+        val cleanQuery = searchQuery.trim()
+
+        if (cleanQuery.isBlank()) {
+            ideas
+        } else {
+            ideas.filter { idea ->
+                idea.text.contains(
+                    other = cleanQuery,
+                    ignoreCase = true
+                )
+            }
+        }
+    }
 
     val recognitionIntent = remember {
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -296,6 +320,45 @@ fun HomeScreen(
                 }
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { newQuery ->
+                    searchQuery = newQuery
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                label = {
+                    Text("Buscar ideas")
+                },
+                placeholder = {
+                    Text("Escribe una palabra")
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = {
+                                searchQuery = ""
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "Limpiar búsqueda"
+                            )
+                        }
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             if (recognizedText.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -308,50 +371,79 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (ideas.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+            when {
+                ideas.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = "Todavía no tienes ideas",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Todavía no tienes ideas",
+                                style = MaterialTheme.typography.titleMedium
+                            )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(6.dp))
 
-                        Text(
-                            text = "Pulsa el micrófono para guardar la primera.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
+                            Text(
+                                text = "Pulsa el micrófono para guardar la primera.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 104.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(
-                        items = ideas,
-                        key = { idea -> idea.id }
-                    ) { idea ->
-                        IdeaCard(
-                            idea = idea,
-                            onEditClick = { selectedIdea ->
-                                ideaPendingEdition = selectedIdea
-                            },
-                            onShareClick = onShareIdea,
-                            onCopyClick = onCopyIdea,
-                            onDeleteClick = { selectedIdea ->
-                                ideaPendingDeletion = selectedIdea
-                            }
-                        )
+
+                filteredIdeas.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No se encontraron ideas",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "Prueba con otra palabra.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(bottom = 104.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(
+                            items = filteredIdeas,
+                            key = { idea -> idea.id }
+                        ) { idea ->
+                            IdeaCard(
+                                idea = idea,
+                                onEditClick = { selectedIdea ->
+                                    ideaPendingEdition = selectedIdea
+                                },
+                                onShareClick = onShareIdea,
+                                onCopyClick = onCopyIdea,
+                                onDeleteClick = { selectedIdea ->
+                                    ideaPendingDeletion = selectedIdea
+                                }
+                            )
+                        }
                     }
                 }
             }
