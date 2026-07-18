@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -22,8 +23,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import com.roberto.voicepocket.data.local.IdeaEntity
+import com.roberto.voicepocket.ui.theme.VoicePocketDimens
+import com.roberto.voicepocket.ui.theme.VoicePocketElevation
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -40,14 +42,18 @@ fun IdeaCard(
     var menuExpanded by remember { mutableStateOf(false) }
 
     Card(
-        modifier = modifier.fillMaxWidth()
-    ) {
+        modifier = modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = VoicePocketElevation.Card
+        )
+    )  {
         Column(
             modifier = Modifier.padding(
-                start = 18.dp,
-                top = 12.dp,
-                end = 8.dp,
-                bottom = 18.dp
+                start = VoicePocketDimens.CardPadding,
+                top = VoicePocketDimens.SpaceM,
+                end = VoicePocketDimens.SpaceS,
+                bottom = VoicePocketDimens.CardPadding
             )
         ) {
             Row(
@@ -119,7 +125,11 @@ fun IdeaCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(
+                modifier = Modifier.height(
+                    VoicePocketDimens.SpaceS
+                )
+            )
 
             Text(
                 text = formatIdeaDate(idea.createdAt),

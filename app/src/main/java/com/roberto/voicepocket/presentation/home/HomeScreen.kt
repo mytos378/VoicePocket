@@ -54,6 +54,7 @@ import com.roberto.voicepocket.data.local.IdeaEntity
 import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EditIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
+import com.roberto.voicepocket.ui.theme.VoicePocketDimens
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -252,10 +253,10 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(
-                        start = 24.dp,
-                        end = 24.dp,
-                        top = 24.dp,
-                        bottom = 12.dp
+                        start = VoicePocketDimens.SpaceXL,
+                        end = VoicePocketDimens.SpaceXL,
+                        top = VoicePocketDimens.SpaceXL,
+                        bottom = VoicePocketDimens.SpaceM
                     )
             ) {
                 Text(
@@ -264,7 +265,11 @@ fun HomeScreen(
                     fontWeight = FontWeight.Bold
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(
+                    modifier = Modifier.height(
+                        VoicePocketDimens.SpaceXS
+                    )
+                )
 
                 Text(
                     text = "Nunca pierdas una idea",
@@ -276,7 +281,11 @@ fun HomeScreen(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = ::handleMicrophoneClick,
-                modifier = Modifier.size(72.dp)
+                modifier = Modifier.size(
+                    VoicePocketDimens.FabSize
+                ),
+                containerColor = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary
             ) {
                 Icon(
                     imageVector = if (isListening) {
@@ -289,7 +298,9 @@ fun HomeScreen(
                     } else {
                         "Capturar idea"
                     },
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(
+                        VoicePocketDimens.FabIcon
+                    )
                 )
             }
         }
@@ -300,7 +311,9 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 20.dp)
+                .padding(
+                    horizontal = VoicePocketDimens.ScreenPadding
+                )
         ) {
             Text(
                 text = "Mis ideas",
@@ -308,7 +321,7 @@ fun HomeScreen(
                 fontWeight = FontWeight.SemiBold
             )
 
-            Spacer(modifier = Modifier.height(6.dp))
+            VoicePocketDimens.SpaceXS
 
             Text(
                 text = statusMessage,
@@ -320,7 +333,7 @@ fun HomeScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            VoicePocketDimens.SpaceL
 
             OutlinedTextField(
                 value = searchQuery,
@@ -357,10 +370,10 @@ fun HomeScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            VoicePocketDimens.SpaceL
 
             if (recognizedText.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
+                VoicePocketDimens.SpaceS
 
                 Text(
                     text = recognizedText,
@@ -369,7 +382,7 @@ fun HomeScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            VoicePocketDimens.SpaceL
 
             when {
                 ideas.isEmpty() -> {
@@ -385,7 +398,7 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.titleMedium
                             )
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            VoicePocketDimens.SpaceXS
 
                             Text(
                                 text = "Pulsa el micrófono para guardar la primera.",
@@ -410,7 +423,7 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.titleMedium
                             )
 
-                            Spacer(modifier = Modifier.height(6.dp))
+                            VoicePocketDimens.SpaceXS
 
                             Text(
                                 text = "Prueba con otra palabra.",
@@ -426,7 +439,9 @@ fun HomeScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 104.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        verticalArrangement = Arrangement.spacedBy(
+                            VoicePocketDimens.ListSpacing
+                        )
                     ) {
                         items(
                             items = filteredIdeas,
