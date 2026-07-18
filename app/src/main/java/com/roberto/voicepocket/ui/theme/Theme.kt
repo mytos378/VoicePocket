@@ -53,6 +53,7 @@ fun VoicePocketTheme(
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
+        shapes = VoicePocketShapes,
         content = content
     )
 }
