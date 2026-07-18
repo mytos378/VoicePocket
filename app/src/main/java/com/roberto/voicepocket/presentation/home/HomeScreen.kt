@@ -443,6 +443,7 @@ fun HomeScreen(
                         ) { idea ->
                             IdeaCard(
                                 idea = idea,
+                                modifier = Modifier.animateItem(),
                                 onEditClick = { selectedIdea ->
                                     ideaPendingEdition = selectedIdea
                                 },
