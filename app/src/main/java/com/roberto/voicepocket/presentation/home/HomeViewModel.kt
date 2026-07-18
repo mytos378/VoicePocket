@@ -30,4 +30,9 @@ class HomeViewModel(
             )
         }
     }
+    fun deleteIdea(idea: IdeaEntity) {
+        viewModelScope.launch {
+            ideaDao.deleteIdeaById(idea.id)
+        }
+    }
 }

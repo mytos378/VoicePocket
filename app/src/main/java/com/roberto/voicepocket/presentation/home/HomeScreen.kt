@@ -49,6 +49,7 @@ import com.roberto.voicepocket.data.local.IdeaEntity
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
 import kotlinx.coroutines.launch
 import java.util.Locale
+import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
 
 @Composable
 fun HomeScreen(
@@ -62,6 +63,10 @@ fun HomeScreen(
     var isListening by remember { mutableStateOf(false) }
     var recognizedText by remember { mutableStateOf("") }
     var statusMessage by remember { mutableStateOf("Pulsa para hablar") }
+
+    var ideaPendingDeletion by remember {
+        mutableStateOf<IdeaEntity?>(null)
+    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -255,7 +260,8 @@ fun HomeScreen(
                 )
             }
         }
-    ) { innerPadding ->
+    )
+    { innerPadding ->
 
         Column(
             modifier = Modifier
@@ -321,12 +327,25 @@ fun HomeScreen(
                         IdeaCard(
                             idea = idea,
                             onEditClick = onEditIdea,
-                            onDeleteClick = onDeleteIdea
+                            onDeleteClick = { selectedIdea ->
+                                ideaPendingDeletion = selectedIdea
+                            }
                         )
                     }
                 }
             }
         }
+    }
+    ideaPendingDeletion?.let { idea ->
+        DeleteIdeaDialog(
+            onConfirm = {
+                onDeleteIdea(idea)
+                ideaPendingDeletion = null
+            },
+            onDismiss = {
+                ideaPendingDeletion = null
+            }
+        )
     }
 }
 

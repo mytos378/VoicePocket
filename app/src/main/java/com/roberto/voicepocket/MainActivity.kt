@@ -37,9 +37,7 @@ class MainActivity : ComponentActivity() {
                     onEditIdea = {
                         // Se implementará después.
                     },
-                    onDeleteIdea = {
-                        // Se implementará después.
-                    }
+                    onDeleteIdea = homeViewModel::deleteIdea
                 )
             }
         }
