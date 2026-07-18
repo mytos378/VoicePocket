@@ -37,4 +37,19 @@ class HomeViewModel(
             ideaDao.deleteIdeaById(idea.id)
         }
     }
+
+    fun updateIdea(
+        idea: IdeaEntity,
+        newText: String
+    ) {
+        val cleanText = newText.trim()
+
+        if (cleanText.isBlank()) return
+
+        viewModelScope.launch {
+            ideaDao.updateIdea(
+                idea.copy(text = cleanText)
+            )
+        }
+    }
 }

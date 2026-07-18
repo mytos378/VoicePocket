@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.roberto.voicepocket.data.local.IdeaEntity
 import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
+import com.roberto.voicepocket.presentation.home.components.EditIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -56,7 +57,7 @@ import java.util.Locale
 fun HomeScreen(
     ideas: List<IdeaEntity>,
     onIdeaRecognized: (String) -> Unit,
-    onEditIdea: (IdeaEntity) -> Unit,
+    onEditIdea: (IdeaEntity, String) -> Unit,
     onDeleteIdea: (IdeaEntity) -> Unit
 ){
     val context = LocalContext.current
@@ -66,6 +67,10 @@ fun HomeScreen(
     var statusMessage by remember { mutableStateOf("Pulsa para hablar") }
 
     var ideaPendingDeletion by remember {
+        mutableStateOf<IdeaEntity?>(null)
+    }
+
+    var ideaPendingEdition by remember {
         mutableStateOf<IdeaEntity?>(null)
     }
 
@@ -336,7 +341,9 @@ fun HomeScreen(
                     ) { idea ->
                         IdeaCard(
                             idea = idea,
-                            onEditClick = onEditIdea,
+                            onEditClick = { selectedIdea ->
+                                ideaPendingEdition = selectedIdea
+                            },
                             onDeleteClick = { selectedIdea ->
                                 ideaPendingDeletion = selectedIdea
                             }
@@ -354,6 +361,18 @@ fun HomeScreen(
             },
             onDismiss = {
                 ideaPendingDeletion = null
+            }
+        )
+    }
+    ideaPendingEdition?.let { idea ->
+        EditIdeaDialog(
+            initialText = idea.text,
+            onConfirm = { editedText ->
+                onEditIdea(idea, editedText)
+                ideaPendingEdition = null
+            },
+            onDismiss = {
+                ideaPendingEdition = null
             }
         )
     }

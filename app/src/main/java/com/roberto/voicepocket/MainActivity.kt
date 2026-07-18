@@ -34,9 +34,7 @@ class MainActivity : ComponentActivity() {
                 HomeScreen(
                     ideas = ideas,
                     onIdeaRecognized = homeViewModel::saveIdea,
-                    onEditIdea = {
-                        // Se implementará después.
-                    },
+                    onEditIdea = homeViewModel::updateIdea,
                     onDeleteIdea = homeViewModel::deleteIdea
                 )
             }
