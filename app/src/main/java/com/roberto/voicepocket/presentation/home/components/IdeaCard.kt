@@ -33,6 +33,7 @@ fun IdeaCard(
     idea: IdeaEntity,
     onEditClick: (IdeaEntity) -> Unit,
     onShareClick: (IdeaEntity) -> Unit,
+    onCopyClick: (IdeaEntity) -> Unit,
     onDeleteClick: (IdeaEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -93,6 +94,16 @@ fun IdeaCard(
                         onClick = {
                             menuExpanded = false
                             onShareClick(idea)
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = {
+                            Text("Copiar")
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onCopyClick(idea)
                         }
                     )
 

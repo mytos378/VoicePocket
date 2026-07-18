@@ -1,7 +1,12 @@
 package com.roberto.voicepocket
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -38,6 +43,7 @@ class MainActivity : ComponentActivity() {
                     onIdeaRecognized = homeViewModel::saveIdea,
                     onEditIdea = homeViewModel::updateIdea,
                     onShareIdea = ::shareIdea,
+                    onCopyIdea = ::copyIdea,
                     onDeleteIdea = homeViewModel::deleteIdea
                 )
             }
@@ -62,5 +68,25 @@ class MainActivity : ComponentActivity() {
                 "Compartir idea"
             )
         )
+    }
+    private fun copyIdea(idea: IdeaEntity) {
+        val clipboardManager = getSystemService(
+            Context.CLIPBOARD_SERVICE
+        ) as ClipboardManager
+
+        val clipData = ClipData.newPlainText(
+            "Idea de VoicePocket",
+            idea.text
+        )
+
+        clipboardManager.setPrimaryClip(clipData)
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            Toast.makeText(
+                this,
+                "Idea copiada",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
     }
 }
