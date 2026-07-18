@@ -58,6 +58,7 @@ fun HomeScreen(
     ideas: List<IdeaEntity>,
     onIdeaRecognized: (String) -> Unit,
     onEditIdea: (IdeaEntity, String) -> Unit,
+    onShareIdea: (IdeaEntity) -> Unit,
     onDeleteIdea: (IdeaEntity) -> Unit
 ){
     val context = LocalContext.current
@@ -344,6 +345,7 @@ fun HomeScreen(
                             onEditClick = { selectedIdea ->
                                 ideaPendingEdition = selectedIdea
                             },
+                            onShareClick = onShareIdea,
                             onDeleteClick = { selectedIdea ->
                                 ideaPendingDeletion = selectedIdea
                             }

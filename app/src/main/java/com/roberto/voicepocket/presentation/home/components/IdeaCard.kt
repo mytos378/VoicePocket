@@ -32,6 +32,7 @@ import java.util.Locale
 fun IdeaCard(
     idea: IdeaEntity,
     onEditClick: (IdeaEntity) -> Unit,
+    onShareClick: (IdeaEntity) -> Unit,
     onDeleteClick: (IdeaEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -82,6 +83,16 @@ fun IdeaCard(
                         onClick = {
                             menuExpanded = false
                             onEditClick(idea)
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = {
+                            Text("Compartir")
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onShareClick(idea)
                         }
                     )
 
