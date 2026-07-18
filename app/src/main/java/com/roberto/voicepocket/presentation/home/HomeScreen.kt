@@ -53,8 +53,10 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     ideas: List<IdeaEntity>,
-    onIdeaRecognized: (String) -> Unit
-) {
+    onIdeaRecognized: (String) -> Unit,
+    onEditIdea: (IdeaEntity) -> Unit,
+    onDeleteIdea: (IdeaEntity) -> Unit
+){
     val context = LocalContext.current
 
     var isListening by remember { mutableStateOf(false) }
@@ -317,7 +319,9 @@ fun HomeScreen(
                         key = { idea -> idea.id }
                     ) { idea ->
                         IdeaCard(
-                            idea = idea
+                            idea = idea,
+                            onEditClick = onEditIdea,
+                            onDeleteClick = onDeleteIdea
                         )
                     }
                 }

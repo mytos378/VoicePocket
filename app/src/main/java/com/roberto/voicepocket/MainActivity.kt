@@ -33,7 +33,13 @@ class MainActivity : ComponentActivity() {
 
                 HomeScreen(
                     ideas = ideas,
-                    onIdeaRecognized = homeViewModel::saveIdea
+                    onIdeaRecognized = homeViewModel::saveIdea,
+                    onEditIdea = {
+                        // Se implementará después.
+                    },
+                    onDeleteIdea = {
+                        // Se implementará después.
+                    }
                 )
             }
         }
