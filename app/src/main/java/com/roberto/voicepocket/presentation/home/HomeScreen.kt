@@ -9,6 +9,8 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +56,7 @@ import androidx.core.content.ContextCompat
 import com.roberto.voicepocket.data.local.IdeaEntity
 import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EditIdeaDialog
+import com.roberto.voicepocket.presentation.home.components.EmptyIdeasState
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
 import com.roberto.voicepocket.ui.theme.VoicePocketDimens
 import kotlinx.coroutines.launch
@@ -245,6 +248,16 @@ fun HomeScreen(
         }
     }
 
+    val fabSize by animateDpAsState(
+        targetValue = if (isListening) {
+            VoicePocketDimens.FabSize + 6.dp
+        } else {
+            VoicePocketDimens.FabSize
+        },
+        animationSpec = spring(),
+        label = "FabSize"
+    )
+
     Scaffold(
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
@@ -284,7 +297,7 @@ fun HomeScreen(
             FloatingActionButton(
                 onClick = ::handleMicrophoneClick,
                 modifier = Modifier.size(
-                    VoicePocketDimens.FabSize
+                    fabSize
                 ),
                 containerColor = MaterialTheme.colorScheme.tertiary,
                 contentColor = MaterialTheme.colorScheme.onTertiary
@@ -388,28 +401,7 @@ fun HomeScreen(
 
             when {
                 ideas.isEmpty() -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                text = "Todavía no tienes ideas",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-
-                            VoicePocketDimens.SpaceXS
-
-                            Text(
-                                text = "Pulsa el micrófono para guardar la primera.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
+                    EmptyIdeasState()
                 }
 
                 filteredIdeas.isEmpty() -> {
