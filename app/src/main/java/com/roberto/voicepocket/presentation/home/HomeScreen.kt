@@ -46,10 +46,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.roberto.voicepocket.data.local.IdeaEntity
+import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
 import kotlinx.coroutines.launch
 import java.util.Locale
-import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
+
 
 @Composable
 fun HomeScreen(
@@ -117,6 +118,7 @@ fun HomeScreen(
 
                 override fun onError(error: Int) {
                     isListening = false
+                    recognizedText = ""
                     statusMessage = speechErrorMessage(error)
                 }
 
@@ -270,13 +272,21 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp)
         ) {
             Text(
-                text = if (isListening) {
-                    "Escuchando..."
-                } else {
-                    "Mis ideas"
-                },
+                text = "Mis ideas",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Text(
+                text = statusMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isListening) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
             )
 
             if (recognizedText.isNotBlank()) {
