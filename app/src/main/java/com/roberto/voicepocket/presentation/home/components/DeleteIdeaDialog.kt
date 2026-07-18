@@ -7,16 +7,18 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun DeleteIdeaDialog(
+    title: String = "Eliminar idea",
+    message: String = "¿Deseas eliminar esta idea? Esta acción no se puede deshacer.",
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Eliminar idea")
+            Text(title)
         },
         text = {
-            Text("¿Deseas eliminar esta idea? Esta acción no se puede deshacer.")
+            Text(message)
         },
         confirmButton = {
             TextButton(
