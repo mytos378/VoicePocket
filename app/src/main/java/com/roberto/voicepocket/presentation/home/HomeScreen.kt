@@ -24,7 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -47,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.roberto.voicepocket.data.local.IdeaEntity
+import com.roberto.voicepocket.presentation.home.components.IdeaCard
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -316,26 +316,9 @@ fun HomeScreen(
                         items = ideas,
                         key = { idea -> idea.id }
                     ) { idea ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(18.dp)
-                            ) {
-                                Text(
-                                    text = idea.text,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
-
-                                Spacer(modifier = Modifier.height(10.dp))
-
-                                Text(
-                                    text = formatIdeaDate(idea.createdAt),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
+                        IdeaCard(
+                            idea = idea
+                        )
                     }
                 }
             }
@@ -372,35 +355,5 @@ private fun speechErrorMessage(error: Int): String {
 
         else ->
             "No fue posible reconocer la voz"
-    }
-}
-private fun formatIdeaDate(timestamp: Long): String {
-    val now = System.currentTimeMillis()
-    val difference = now - timestamp
-
-    val minute = 60_000L
-    val hour = 60 * minute
-    val day = 24 * hour
-
-    return when {
-        difference < minute -> "Ahora"
-        difference < hour -> {
-            val minutes = difference / minute
-            "Hace $minutes min"
-        }
-
-        difference < day -> {
-            val hours = difference / hour
-            "Hace $hours h"
-        }
-
-        difference < 2 * day -> "Ayer"
-        else -> {
-            val formatter = java.text.SimpleDateFormat(
-                "dd/MM/yyyy",
-                Locale.getDefault()
-            )
-            formatter.format(java.util.Date(timestamp))
-        }
     }
 }
