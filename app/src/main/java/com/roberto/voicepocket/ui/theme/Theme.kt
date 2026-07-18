@@ -1,58 +1,109 @@
 package com.roberto.voicepocket.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = DeepOceanBlue,
+    onPrimary = PureWhite,
+    primaryContainer = LightBlueContainer,
+    onPrimaryContainer = Charcoal,
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    secondary = SlateGray,
+    onSecondary = PureWhite,
+    secondaryContainer = LightSurfaceVariant,
+    onSecondaryContainer = Charcoal,
+
+    tertiary = PocketTurquoise,
+    onTertiary = Charcoal,
+    tertiaryContainer = LightTurquoiseContainer,
+    onTertiaryContainer = Charcoal,
+
+    error = VoicePocketError,
+    onError = PureWhite,
+
+    background = SoftWhite,
+    onBackground = Charcoal,
+
+    surface = PureWhite,
+    onSurface = Charcoal,
+    surfaceVariant = LightSurfaceVariant,
+    onSurfaceVariant = MediumGray,
+
+    outline = SlateGray
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = DarkPrimary,
+    onPrimary = DarkPrimaryContainer,
+    primaryContainer = DarkPrimaryContainer,
+    onPrimaryContainer = LightText,
+
+    secondary = DarkSecondary,
+    onSecondary = Charcoal,
+    secondaryContainer = DarkSurfaceVariant,
+    onSecondaryContainer = LightText,
+
+    tertiary = DarkTertiary,
+    onTertiary = DarkTertiaryContainer,
+    tertiaryContainer = DarkTertiaryContainer,
+    onTertiaryContainer = LightText,
+
+    error = VoicePocketDarkError,
+    onError = Charcoal,
+
+    background = DarkBackground,
+    onBackground = LightText,
+
+    surface = DarkSurface,
+    onSurface = LightText,
+    surfaceVariant = DarkSurfaceVariant,
+    onSurfaceVariant = DarkSecondary,
+
+    outline = DarkSecondary
 )
 
 @Composable
 fun VoicePocketTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    val colorScheme = if (darkTheme) {
+        DarkColorScheme
+    } else {
+        LightColorScheme
+    }
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val view = LocalView.current
+
+    if (!view.isInEditMode) {
+        val window = (view.context as Activity).window
+
+        @Suppress("DEPRECATION")
+        window.statusBarColor = colorScheme.background.toArgb()
+
+        @Suppress("DEPRECATION")
+        window.navigationBarColor = colorScheme.background.toArgb()
+
+        WindowCompat.getInsetsController(
+            window,
+            view
+        ).apply {
+            isAppearanceLightStatusBars = !darkTheme
+            isAppearanceLightNavigationBars = !darkTheme
+        }
     }
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = Typography,
+        typography = VoicePocketTypography,
         shapes = VoicePocketShapes,
         content = content
     )
