@@ -28,7 +28,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val database = VoicePocketDatabase.getInstance(applicationContext)
-        val factory = HomeViewModelFactory(database.ideaDao())
+        val factory = HomeViewModelFactory(
+            ideaDao = database.ideaDao(),
+            folderDao = database.folderDao()
+        )
 
         setContent {
             VoicePocketTheme {
