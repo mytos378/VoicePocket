@@ -62,6 +62,7 @@ import com.roberto.voicepocket.presentation.home.components.EditIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EmptyIdeasState
 import com.roberto.voicepocket.presentation.home.components.FolderSelector
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
+import com.roberto.voicepocket.presentation.home.components.MoveIdeaToFolderDialog
 import com.roberto.voicepocket.ui.theme.VoicePocketDimens
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -94,6 +95,10 @@ fun HomeScreen(
     }
 
     var ideaPendingEdition by remember {
+        mutableStateOf<IdeaEntity?>(null)
+    }
+
+    var ideaPendingMove by remember {
         mutableStateOf<IdeaEntity?>(null)
     }
 
@@ -498,6 +503,9 @@ fun HomeScreen(
                                 onEditClick = { selectedIdea ->
                                     ideaPendingEdition = selectedIdea
                                 },
+                                onMoveClick = { selectedIdea ->
+                                    ideaPendingMove = selectedIdea
+                                },
                                 onShareClick = onShareIdea,
                                 onCopyClick = onCopyIdea,
                                 onDeleteClick = { selectedIdea ->
@@ -544,6 +552,22 @@ fun HomeScreen(
             },
             onDismiss = {
                 ideaPendingEdition = null
+            }
+        )
+    }
+    ideaPendingMove?.let { idea ->
+        MoveIdeaToFolderDialog(
+            folders = folders,
+            currentFolderId = idea.folderId,
+            onFolderSelected = { folderId ->
+                onMoveIdeaToFolder(
+                    idea,
+                    folderId
+                )
+                ideaPendingMove = null
+            },
+            onDismiss = {
+                ideaPendingMove = null
             }
         )
     }

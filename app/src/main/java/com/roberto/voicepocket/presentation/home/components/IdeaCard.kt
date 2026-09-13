@@ -37,6 +37,7 @@ fun IdeaCard(
     onShareClick: (IdeaEntity) -> Unit,
     onCopyClick: (IdeaEntity) -> Unit,
     onDeleteClick: (IdeaEntity) -> Unit,
+    onMoveClick: (IdeaEntity) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -90,6 +91,16 @@ fun IdeaCard(
                         onClick = {
                             menuExpanded = false
                             onEditClick(idea)
+                        }
+                    )
+
+                    DropdownMenuItem(
+                        text = {
+                            Text("Mover a carpeta")
+                        },
+                        onClick = {
+                            menuExpanded = false
+                            onMoveClick(idea)
                         }
                     )
 
