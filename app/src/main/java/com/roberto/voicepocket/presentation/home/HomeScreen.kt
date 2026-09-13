@@ -60,6 +60,7 @@ import com.roberto.voicepocket.presentation.home.components.CreateFolderDialog
 import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EditIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EmptyIdeasState
+import com.roberto.voicepocket.presentation.home.components.FolderSelector
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
 import com.roberto.voicepocket.ui.theme.VoicePocketDimens
 import kotlinx.coroutines.launch
@@ -96,6 +97,14 @@ fun HomeScreen(
     }
 
     var showCreateFolderDialog by remember {
+        mutableStateOf(false)
+    }
+
+    var selectedFolderId by remember {
+        mutableStateOf<Long?>(null)
+    }
+
+    var isUnfiledSelected by remember {
         mutableStateOf(false)
     }
 
@@ -399,13 +408,26 @@ fun HomeScreen(
                 )
             )
 
-            TextButton(
-                onClick = {
+            FolderSelector(
+                folders = folders,
+                selectedFolderId = selectedFolderId,
+                isUnfiledSelected = isUnfiledSelected,
+                onAllClick = {
+                    selectedFolderId = null
+                    isUnfiledSelected = false
+                },
+                onUnfiledClick = {
+                    selectedFolderId = null
+                    isUnfiledSelected = true
+                },
+                onFolderClick = { folder ->
+                    selectedFolderId = folder.id
+                    isUnfiledSelected = false
+                },
+                onCreateFolderClick = {
                     showCreateFolderDialog = true
                 }
-            ) {
-                Text("+ Nueva carpeta")
-            }
+            )
 
             Spacer(
                 modifier = Modifier.height(
