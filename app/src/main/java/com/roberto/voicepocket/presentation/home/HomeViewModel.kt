@@ -53,14 +53,20 @@ class HomeViewModel(
         }
     }
 
-    fun saveIdea(text: String) {
+    fun saveIdea(
+        text: String,
+        folderId: Long? = null
+    ) {
         val cleanText = text.trim()
 
         if (cleanText.isBlank()) return
 
         viewModelScope.launch {
             ideaDao.insertIdea(
-                IdeaEntity(text = cleanText)
+                IdeaEntity(
+                    text = cleanText,
+                    folderId = folderId
+                )
             )
         }
     }

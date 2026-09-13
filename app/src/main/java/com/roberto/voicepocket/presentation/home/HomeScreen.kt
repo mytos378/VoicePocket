@@ -71,7 +71,7 @@ import java.util.Locale
 @Composable
 fun HomeScreen(
     ideas: List<IdeaEntity>,
-    onIdeaRecognized: (String) -> Unit,
+    onIdeaRecognized: (String, Long?) -> Unit,
     onEditIdea: (IdeaEntity, String) -> Unit,
     onShareIdea: (IdeaEntity) -> Unit,
     onCopyIdea: (IdeaEntity) -> Unit,
@@ -117,19 +117,29 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    val filteredIdeas = remember(ideas, searchQuery) {
-        val cleanQuery = searchQuery.trim()
-
-        if (cleanQuery.isBlank()) {
-            ideas
-        } else {
+    val folderFilteredIdeas = when {
+        isUnfiledSelected -> {
             ideas.filter { idea ->
-                idea.text.contains(
-                    other = cleanQuery,
-                    ignoreCase = true
-                )
+                idea.folderId == null
             }
         }
+
+        selectedFolderId != null -> {
+            ideas.filter { idea ->
+                idea.folderId == selectedFolderId
+            }
+        }
+
+        else -> {
+            ideas
+        }
+    }
+
+    val filteredIdeas = folderFilteredIdeas.filter { idea ->
+        idea.text.contains(
+            searchQuery,
+            ignoreCase = true
+        )
     }
 
     val recognitionIntent = remember {
@@ -197,7 +207,16 @@ fun HomeScreen(
                     statusMessage = if (recognizedText.isBlank()) {
                         "No se reconoció ninguna frase"
                     } else {
-                        onIdeaRecognized(recognizedText)
+                        val targetFolderId = when {
+                            isUnfiledSelected -> null
+                            selectedFolderId != null -> selectedFolderId
+                            else -> null
+                        }
+
+                        onIdeaRecognized(
+                            recognizedText,
+                            targetFolderId
+                        )
 
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar(
@@ -460,6 +479,35 @@ fun HomeScreen(
                     EmptyIdeasState()
                 }
 
+                folderFilteredIdeas.isEmpty() -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "No hay ideas en esta carpeta",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+
+                            Spacer(
+                                modifier = Modifier.height(
+                                    VoicePocketDimens.SpaceS
+                                )
+                            )
+
+                            Text(
+                                text = "Puedes mover ideas aquí desde el menú de cada idea.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
                 filteredIdeas.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -473,7 +521,11 @@ fun HomeScreen(
                                 style = MaterialTheme.typography.titleMedium
                             )
 
-                            VoicePocketDimens.SpaceXS
+                            Spacer(
+                                modifier = Modifier.height(
+                                    VoicePocketDimens.SpaceS
+                                )
+                            )
 
                             Text(
                                 text = "Prueba con otra palabra.",
