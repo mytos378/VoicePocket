@@ -37,9 +37,19 @@ class HomeViewModel(
         if (cleanName.isBlank()) return
 
         viewModelScope.launch {
-            folderDao.insertFolder(
-                FolderEntity(name = cleanName)
-            )
+            val alreadyExists = folderDao.folderNameExists(cleanName)
+
+            if (!alreadyExists) {
+                folderDao.insertFolder(
+                    FolderEntity(name = cleanName)
+                )
+            }
+        }
+    }
+
+    fun deleteFolder(folder: FolderEntity) {
+        viewModelScope.launch {
+            folderDao.deleteFolderKeepingIdeas(folder.id)
         }
     }
 
