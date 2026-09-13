@@ -18,6 +18,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 abstract class VoicePocketDatabase : RoomDatabase() {
 
     abstract fun ideaDao(): IdeaDao
+    abstract fun folderDao(): FolderDao
 
     companion object {
 
