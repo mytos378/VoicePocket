@@ -41,13 +41,17 @@ class MainActivity : ComponentActivity() {
 
                 val ideas by homeViewModel.ideas.collectAsState()
 
+                val folders by homeViewModel.folders.collectAsState()
+
                 HomeScreen(
                     ideas = ideas,
+                    folders = folders,
                     onIdeaRecognized = homeViewModel::saveIdea,
                     onEditIdea = homeViewModel::updateIdea,
                     onShareIdea = ::shareIdea,
                     onCopyIdea = ::copyIdea,
-                    onDeleteIdea = homeViewModel::deleteIdea
+                    onDeleteIdea = homeViewModel::deleteIdea,
+                    onCreateFolder = homeViewModel::createFolder,
                 )
             }
         }

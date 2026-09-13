@@ -38,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -53,7 +54,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.roberto.voicepocket.data.local.FolderEntity
 import com.roberto.voicepocket.data.local.IdeaEntity
+import com.roberto.voicepocket.presentation.home.components.CreateFolderDialog
 import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EditIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EmptyIdeasState
@@ -70,7 +73,9 @@ fun HomeScreen(
     onEditIdea: (IdeaEntity, String) -> Unit,
     onShareIdea: (IdeaEntity) -> Unit,
     onCopyIdea: (IdeaEntity) -> Unit,
-    onDeleteIdea: (IdeaEntity) -> Unit
+    onDeleteIdea: (IdeaEntity) -> Unit,
+    folders: List<FolderEntity>,
+    onCreateFolder: (String) -> Unit
 ){
     val context = LocalContext.current
 
@@ -88,6 +93,10 @@ fun HomeScreen(
 
     var ideaPendingEdition by remember {
         mutableStateOf<IdeaEntity?>(null)
+    }
+
+    var showCreateFolderDialog by remember {
+        mutableStateOf(false)
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -384,6 +393,25 @@ fun HomeScreen(
                     }
                 }
             )
+            Spacer(
+                modifier = Modifier.height(
+                    VoicePocketDimens.SpaceS
+                )
+            )
+
+            TextButton(
+                onClick = {
+                    showCreateFolderDialog = true
+                }
+            ) {
+                Text("+ Nueva carpeta")
+            }
+
+            Spacer(
+                modifier = Modifier.height(
+                    VoicePocketDimens.SpaceS
+                )
+            )
 
             VoicePocketDimens.SpaceL
 
@@ -459,6 +487,20 @@ fun HomeScreen(
             }
         }
     }
+
+    if (showCreateFolderDialog) {
+        CreateFolderDialog(
+            existingFolderNames = folders.map { it.name },
+            onConfirm = { folderName ->
+                onCreateFolder(folderName)
+                showCreateFolderDialog = false
+            },
+            onDismiss = {
+                showCreateFolderDialog = false
+            }
+        )
+    }
+
     ideaPendingDeletion?.let { idea ->
         DeleteIdeaDialog(
             onConfirm = {
