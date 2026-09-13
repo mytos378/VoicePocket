@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
                     onCopyIdea = ::copyIdea,
                     onDeleteIdea = homeViewModel::deleteIdea,
                     onCreateFolder = homeViewModel::createFolder,
+                    onMoveIdeaToFolder = homeViewModel::moveIdeaToFolder,
                 )
             }
         }

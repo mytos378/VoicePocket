@@ -85,4 +85,16 @@ class HomeViewModel(
             )
         }
     }
+
+    fun moveIdeaToFolder(
+        idea: IdeaEntity,
+        folderId: Long?
+    ) {
+        viewModelScope.launch {
+            ideaDao.moveIdeaToFolder(
+                ideaId = idea.id,
+                folderId = folderId
+            )
+        }
+    }
 }

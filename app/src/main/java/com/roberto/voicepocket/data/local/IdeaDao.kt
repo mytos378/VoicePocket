@@ -21,4 +21,10 @@ interface IdeaDao {
 
     @Query("DELETE FROM ideas WHERE id = :ideaId")
     suspend fun deleteIdeaById(ideaId: Long)
+
+    @Query("UPDATE ideas SET folderId = :folderId WHERE id = :ideaId" )
+    suspend fun moveIdeaToFolder(
+        ideaId: Long,
+        folderId: Long?
+    )
 }

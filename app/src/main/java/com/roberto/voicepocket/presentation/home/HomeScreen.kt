@@ -76,7 +76,8 @@ fun HomeScreen(
     onCopyIdea: (IdeaEntity) -> Unit,
     onDeleteIdea: (IdeaEntity) -> Unit,
     folders: List<FolderEntity>,
-    onCreateFolder: (String) -> Unit
+    onCreateFolder: (String) -> Unit,
+    onMoveIdeaToFolder: (IdeaEntity, Long?) -> Unit
 ){
     val context = LocalContext.current
 
