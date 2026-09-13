@@ -64,6 +64,12 @@ import com.roberto.voicepocket.presentation.home.components.FolderSelector
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
 import com.roberto.voicepocket.presentation.home.components.MoveIdeaToFolderDialog
 import com.roberto.voicepocket.ui.theme.VoicePocketDimens
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -140,6 +146,12 @@ fun HomeScreen(
             searchQuery,
             ignoreCase = true
         )
+    }
+
+    val folderContentKey = when {
+        isUnfiledSelected -> "unfiled"
+        selectedFolderId != null -> "folder_$selectedFolderId"
+        else -> "all"
     }
 
     val recognitionIntent = remember {
@@ -474,6 +486,20 @@ fun HomeScreen(
 
             VoicePocketDimens.SpaceL
 
+        AnimatedContent(
+            targetState = folderContentKey,
+            transitionSpec = {
+                (fadeIn() + slideInHorizontally { fullWidth ->
+                    fullWidth / 10
+                }) togetherWith
+                        (fadeOut() + slideOutHorizontally { fullWidth ->
+                            -fullWidth / 10
+                        })
+            },
+            label = "FolderContentTransition"
+        )   {
+
+
             when {
                 ideas.isEmpty() -> {
                     EmptyIdeasState()
@@ -570,6 +596,7 @@ fun HomeScreen(
             }
         }
     }
+}
 
     if (showCreateFolderDialog) {
         CreateFolderDialog(
