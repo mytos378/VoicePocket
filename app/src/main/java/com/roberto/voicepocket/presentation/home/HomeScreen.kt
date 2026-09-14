@@ -57,6 +57,8 @@ import androidx.core.content.ContextCompat
 import com.roberto.voicepocket.data.local.FolderEntity
 import com.roberto.voicepocket.data.local.IdeaEntity
 import com.roberto.voicepocket.presentation.home.components.CreateFolderDialog
+import com.roberto.voicepocket.presentation.home.components.FolderActionsDialog
+import com.roberto.voicepocket.presentation.home.components.DeleteFolderDialog
 import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EditIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EmptyIdeasState
@@ -84,7 +86,8 @@ fun HomeScreen(
     onDeleteIdea: (IdeaEntity) -> Unit,
     folders: List<FolderEntity>,
     onCreateFolder: (String) -> Unit,
-    onMoveIdeaToFolder: (IdeaEntity, Long?) -> Unit
+    onMoveIdeaToFolder: (IdeaEntity, Long?) -> Unit,
+    onDeleteFolder: (FolderEntity) -> Unit
 ){
     val context = LocalContext.current
 
@@ -118,6 +121,14 @@ fun HomeScreen(
 
     var isUnfiledSelected by remember {
         mutableStateOf(false)
+    }
+
+    var folderPendingAction by remember {
+        mutableStateOf<FolderEntity?>(null)
+    }
+
+    var folderPendingDeletion by remember {
+        mutableStateOf<FolderEntity?>(null)
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -463,6 +474,9 @@ fun HomeScreen(
                 },
                 onCreateFolderClick = {
                     showCreateFolderDialog = true
+                },
+                onFolderLongClick = { folder ->
+                    folderPendingAction = folder
                 }
             )
 
@@ -647,6 +661,36 @@ fun HomeScreen(
             },
             onDismiss = {
                 ideaPendingMove = null
+            }
+        )
+    }
+    folderPendingAction?.let { folder ->
+        FolderActionsDialog(
+            folder = folder,
+            onDeleteClick = {
+                folderPendingAction = null
+                folderPendingDeletion = folder
+            },
+            onDismiss = {
+                folderPendingAction = null
+            }
+        )
+    }
+    folderPendingDeletion?.let { folder ->
+        DeleteFolderDialog(
+            folder = folder,
+            onConfirm = {
+                onDeleteFolder(folder)
+
+                if (selectedFolderId == folder.id) {
+                    selectedFolderId = null
+                    isUnfiledSelected = true
+                }
+
+                folderPendingDeletion = null
+            },
+            onDismiss = {
+                folderPendingDeletion = null
             }
         )
     }
