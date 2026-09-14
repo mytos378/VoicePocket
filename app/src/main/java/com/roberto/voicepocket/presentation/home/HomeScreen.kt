@@ -75,6 +75,8 @@ import androidx.compose.animation.togetherWith
 import com.roberto.voicepocket.presentation.home.components.RenameFolderDialog
 import kotlinx.coroutines.launch
 import java.util.Locale
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.LaunchedEffect
 
 
 @Composable
@@ -135,6 +137,10 @@ fun HomeScreen(
 
     var folderPendingRename by remember {
         mutableStateOf<FolderEntity?>(null)
+    }
+
+    var scrollToTopAfterCapture by remember {
+        mutableStateOf(false)
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -241,6 +247,8 @@ fun HomeScreen(
                             selectedFolderId != null -> selectedFolderId
                             else -> null
                         }
+
+                        scrollToTopAfterCapture = true
 
                         onIdeaRecognized(
                             recognizedText,
@@ -506,20 +514,36 @@ fun HomeScreen(
 
             VoicePocketDimens.SpaceL
 
-        AnimatedContent(
-            targetState = folderContentKey,
-            transitionSpec = {
-                (fadeIn() + slideInHorizontally { fullWidth ->
-                    fullWidth / 10
-                }) togetherWith
-                        (fadeOut() + slideOutHorizontally { fullWidth ->
-                            -fullWidth / 10
-                        })
-            },
-            label = "FolderContentTransition"
-        )   {
+            AnimatedContent(
+                targetState = folderContentKey,
+                transitionSpec = {
+                    (fadeIn() + slideInHorizontally { fullWidth ->
+                        fullWidth / 10
+                    }) togetherWith
+                            (fadeOut() + slideOutHorizontally { fullWidth ->
+                                -fullWidth / 10
+                            })
+                },
+                label = "FolderContentTransition"
+            ) {
+                val listState = rememberLazyListState()
 
+                LaunchedEffect(ideas.size) {
+                    if (scrollToTopAfterCapture) {
+                        val newestIdeaId = ideas.firstOrNull()?.id
 
+                        val newIdeaIsVisible = newestIdeaId != null &&
+                                filteredIdeas.any { idea ->
+                                    idea.id == newestIdeaId
+                                }
+
+                        if (newIdeaIsVisible) {
+                            listState.animateScrollToItem(0)
+                        }
+
+                        scrollToTopAfterCapture = false
+                    }
+                }
             when {
                 ideas.isEmpty() -> {
                     EmptyIdeasState()
@@ -585,6 +609,7 @@ fun HomeScreen(
 
                 else -> {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(bottom = 104.dp),
                         verticalArrangement = Arrangement.spacedBy(
