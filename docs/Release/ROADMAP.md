@@ -120,3 +120,30 @@ La identidad visual Pocket Spark, icono definitivo, splash screen y preparación
 ## Principio de producto
 
 > Capturar debe seguir siendo inmediato. Organizar debe ser opcional. Recuperar debe ser fácil.
+> 
+> ## Completado
+
+### Carpetas personalizadas
+- Crear carpetas.
+- Evitar nombres duplicados.
+- Filtrar ideas por carpeta.
+- Vista "Todas".
+- Vista "Sin carpeta".
+- Capturar directamente en la carpeta seleccionada.
+- Mover ideas entre carpetas.
+- Renombrar carpetas.
+- Eliminar carpetas sin eliminar ideas.
+- Recuperar ideas eliminando la carpeta hacia "Sin carpeta".
+- Transiciones entre carpetas.
+- Mostrar inmediatamente las ideas recién capturadas.
+
+## Prioridades Pendientes
+1. Agregar más contenido a una idea por voz.
+2. Mejorar captura de pensamientos largos / pausas.
+3. Listas y checklists.
+4. Recuperar ideas olvidadas / recordatorios opcionales.
+5. Favoritos.
+6. Etiquetas.
+7. Exportación.
+8. Sincronización.
+9. Funciones de IA.
