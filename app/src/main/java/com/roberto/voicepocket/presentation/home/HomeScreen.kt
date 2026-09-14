@@ -72,6 +72,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import com.roberto.voicepocket.presentation.home.components.RenameFolderDialog
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -87,7 +88,8 @@ fun HomeScreen(
     folders: List<FolderEntity>,
     onCreateFolder: (String) -> Unit,
     onMoveIdeaToFolder: (IdeaEntity, Long?) -> Unit,
-    onDeleteFolder: (FolderEntity) -> Unit
+    onDeleteFolder: (FolderEntity) -> Unit,
+    onRenameFolder: (FolderEntity, String) -> Unit,
 ){
     val context = LocalContext.current
 
@@ -128,6 +130,10 @@ fun HomeScreen(
     }
 
     var folderPendingDeletion by remember {
+        mutableStateOf<FolderEntity?>(null)
+    }
+
+    var folderPendingRename by remember {
         mutableStateOf<FolderEntity?>(null)
     }
 
@@ -667,6 +673,10 @@ fun HomeScreen(
     folderPendingAction?.let { folder ->
         FolderActionsDialog(
             folder = folder,
+            onRenameClick = {
+                folderPendingAction = null
+                folderPendingRename = folder
+            },
             onDeleteClick = {
                 folderPendingAction = null
                 folderPendingDeletion = folder
@@ -691,6 +701,26 @@ fun HomeScreen(
             },
             onDismiss = {
                 folderPendingDeletion = null
+            }
+        )
+    }
+
+    folderPendingRename?.let { folder ->
+        RenameFolderDialog(
+            folder = folder,
+            existingFolderNames = folders
+                .filterNot { it.id == folder.id }
+                .map { it.name },
+            onConfirm = { newName ->
+                onRenameFolder(
+                    folder,
+                    newName
+                )
+
+                folderPendingRename = null
+            },
+            onDismiss = {
+                folderPendingRename = null
             }
         )
     }

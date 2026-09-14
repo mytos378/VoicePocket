@@ -103,4 +103,27 @@ class HomeViewModel(
             )
         }
     }
+
+    fun renameFolder(
+        folder: FolderEntity,
+        newName: String
+    ) {
+        val cleanName = newName.trim()
+
+        if (cleanName.isBlank()) return
+
+        viewModelScope.launch {
+            val alreadyExists = folderDao.folderNameExistsExcept(
+                name = cleanName,
+                folderId = folder.id
+            )
+
+            if (!alreadyExists) {
+                folderDao.renameFolder(
+                    folderId = folder.id,
+                    name = cleanName
+                )
+            }
+        }
+    }
 }

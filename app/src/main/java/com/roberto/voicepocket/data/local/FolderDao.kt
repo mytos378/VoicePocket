@@ -44,4 +44,16 @@ interface FolderDao {
         removeFolderFromIdeas(folderId)
         deleteFolderById(folderId)
     }
+
+    @Query("UPDATE folders SET name = :name WHERE id = :folderId")
+    suspend fun renameFolder(
+        folderId: Long,
+        name: String
+    )
+
+    @Query("SELECT EXISTS(SELECT 1 FROM folders WHERE name = :name COLLATE NOCASE AND id != :folderId)")
+    suspend fun folderNameExistsExcept(
+        name: String,
+        folderId: Long
+    ): Boolean
 }

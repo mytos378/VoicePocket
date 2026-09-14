@@ -53,7 +53,8 @@ class MainActivity : ComponentActivity() {
                     onDeleteIdea = homeViewModel::deleteIdea,
                     onCreateFolder = homeViewModel::createFolder,
                     onMoveIdeaToFolder = homeViewModel::moveIdeaToFolder,
-                    onDeleteFolder = homeViewModel::deleteFolder
+                    onDeleteFolder = homeViewModel::deleteFolder,
+                    onRenameFolder = homeViewModel::renameFolder
                 )
             }
         }
