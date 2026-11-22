@@ -20,6 +20,15 @@ sealed interface IdeaSaveState {
     data class Saved(val ideaId: Long) : IdeaSaveState
 }
 
+enum class EditIdeaStatus { Editing, Saving, Failed, Conflict }
+
+data class EditIdeaState(
+    val ideaId: Long,
+    val originalText: String,
+    val draft: String = originalText,
+    val status: EditIdeaStatus = EditIdeaStatus.Editing
+)
+
 class HomeViewModel(
     private val ideaDao: IdeaDao,
     private val folderDao: FolderDao
@@ -27,6 +36,9 @@ class HomeViewModel(
 
     private val _ideaSaveState = MutableStateFlow<IdeaSaveState>(IdeaSaveState.Idle)
     val ideaSaveState = _ideaSaveState.asStateFlow()
+
+    private val _ideaEditState = MutableStateFlow<EditIdeaState?>(null)
+    val ideaEditState = _ideaEditState.asStateFlow()
 
     val ideas = ideaDao
         .getAllIdeas()
@@ -113,18 +125,40 @@ class HomeViewModel(
         }
     }
 
-    fun updateIdea(
-        idea: IdeaEntity,
-        newText: String
-    ) {
-        val cleanText = newText.trim()
+    fun beginIdeaEdit(idea: IdeaEntity) {
+        if (_ideaEditState.value == null) {
+            _ideaEditState.value = EditIdeaState(idea.id, idea.text)
+        }
+    }
 
-        if (cleanText.isBlank()) return
+    fun changeIdeaDraft(text: String) {
+        val edit = _ideaEditState.value ?: return
+        if (edit.status == EditIdeaStatus.Saving || edit.status == EditIdeaStatus.Conflict) return
+        _ideaEditState.value = edit.copy(draft = text, status = EditIdeaStatus.Editing)
+    }
 
+    fun cancelIdeaEdit() {
+        if (_ideaEditState.value?.status != EditIdeaStatus.Saving) {
+            _ideaEditState.value = null
+        }
+    }
+
+    fun saveIdeaEdit() {
+        val edit = _ideaEditState.value ?: return
+        if (edit.status == EditIdeaStatus.Saving || edit.status == EditIdeaStatus.Conflict) return
+        val text = edit.draft.trim()
+        if (text.isBlank()) return
+
+        _ideaEditState.value = edit.copy(status = EditIdeaStatus.Saving)
         viewModelScope.launch {
-            ideaDao.updateIdea(
-                idea.copy(text = cleanText)
-            )
+            _ideaEditState.value = try {
+                val updated = ideaDao.updateIdeaText(edit.ideaId, edit.originalText, text)
+                if (updated == 1) null else edit.copy(status = EditIdeaStatus.Conflict)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                edit.copy(status = EditIdeaStatus.Failed)
+            }
         }
     }
 

@@ -88,7 +88,11 @@ fun HomeScreen(
     onRetryIdeaSave: () -> Unit,
     onDiscardFailedIdea: () -> Unit,
     onIdeaSavedShown: (Long) -> Unit,
-    onEditIdea: (IdeaEntity, String) -> Unit,
+    ideaEditState: EditIdeaState?,
+    onEditIdea: (IdeaEntity) -> Unit,
+    onIdeaDraftChange: (String) -> Unit,
+    onSaveIdeaEdit: () -> Unit,
+    onCancelIdeaEdit: () -> Unit,
     onShareIdea: (IdeaEntity) -> Unit,
     onCopyIdea: (IdeaEntity) -> Unit,
     onDeleteIdea: (IdeaEntity) -> Unit,
@@ -111,10 +115,6 @@ fun HomeScreen(
     }
 
     var ideaPendingDeletion by remember {
-        mutableStateOf<IdeaEntity?>(null)
-    }
-
-    var ideaPendingEdition by remember {
         mutableStateOf<IdeaEntity?>(null)
     }
 
@@ -631,9 +631,7 @@ fun HomeScreen(
                             IdeaCard(
                                 idea = idea,
                                 modifier = Modifier.animateItem(),
-                                onEditClick = { selectedIdea ->
-                                    ideaPendingEdition = selectedIdea
-                                },
+                                onEditClick = onEditIdea,
                                 onMoveClick = { selectedIdea ->
                                     ideaPendingMove = selectedIdea
                                 },
@@ -675,16 +673,12 @@ fun HomeScreen(
             }
         )
     }
-    ideaPendingEdition?.let { idea ->
+    ideaEditState?.let { edit ->
         EditIdeaDialog(
-            initialText = idea.text,
-            onConfirm = { editedText ->
-                onEditIdea(idea, editedText)
-                ideaPendingEdition = null
-            },
-            onDismiss = {
-                ideaPendingEdition = null
-            }
+            edit = edit,
+            onDraftChange = onIdeaDraftChange,
+            onConfirm = onSaveIdeaEdit,
+            onDismiss = onCancelIdeaEdit
         )
     }
     ideaPendingMove?.let { idea ->

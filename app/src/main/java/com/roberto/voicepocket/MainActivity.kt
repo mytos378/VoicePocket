@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
 
                 val folders by homeViewModel.folders.collectAsState()
                 val ideaSaveState by homeViewModel.ideaSaveState.collectAsState()
+                val ideaEditState by homeViewModel.ideaEditState.collectAsState()
 
                 HomeScreen(
                     ideas = ideas,
@@ -52,7 +53,11 @@ class MainActivity : ComponentActivity() {
                     onRetryIdeaSave = homeViewModel::retryIdeaSave,
                     onDiscardFailedIdea = homeViewModel::discardFailedIdea,
                     onIdeaSavedShown = homeViewModel::acknowledgeIdeaSaved,
-                    onEditIdea = homeViewModel::updateIdea,
+                    ideaEditState = ideaEditState,
+                    onEditIdea = homeViewModel::beginIdeaEdit,
+                    onIdeaDraftChange = homeViewModel::changeIdeaDraft,
+                    onSaveIdeaEdit = homeViewModel::saveIdeaEdit,
+                    onCancelIdeaEdit = homeViewModel::cancelIdeaEdit,
                     onShareIdea = ::shareIdea,
                     onCopyIdea = ::copyIdea,
                     onDeleteIdea = homeViewModel::deleteIdea,
