@@ -4,17 +4,16 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import androidx.room.Update
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface IdeaDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertIdea(idea: IdeaEntity)
+    suspend fun insertIdea(idea: IdeaEntity): Long
 
-    @Update
-    suspend fun updateIdea(idea: IdeaEntity)
+    @Query("UPDATE ideas SET text = :text WHERE id = :ideaId AND text = :originalText")
+    suspend fun updateIdeaText(ideaId: Long, originalText: String, text: String): Int
 
     @Query("SELECT * FROM ideas ORDER BY createdAt DESC")
     fun getAllIdeas(): Flow<List<IdeaEntity>>
