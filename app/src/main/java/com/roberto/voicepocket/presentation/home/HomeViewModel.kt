@@ -6,6 +6,7 @@ import com.roberto.voicepocket.data.local.FolderDao
 import com.roberto.voicepocket.data.local.FolderEntity
 import com.roberto.voicepocket.data.local.IdeaDao
 import com.roberto.voicepocket.data.local.IdeaEntity
+import com.roberto.voicepocket.data.local.IdeaDraftStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,26 +21,16 @@ sealed interface IdeaSaveState {
     data class Saved(val ideaId: Long) : IdeaSaveState
 }
 
-enum class EditIdeaStatus { Editing, Saving, Failed, Conflict }
-
-data class EditIdeaState(
-    val ideaId: Long,
-    val originalText: String,
-    val draft: String = originalText,
-    val status: EditIdeaStatus = EditIdeaStatus.Editing,
-    val voicePreview: String? = null
-)
-
-class HomeViewModel(
+internal class HomeViewModel(
     private val ideaDao: IdeaDao,
-    private val folderDao: FolderDao
+    private val folderDao: FolderDao,
+    draftStore: IdeaDraftStore
 ) : ViewModel() {
 
     private val _ideaSaveState = MutableStateFlow<IdeaSaveState>(IdeaSaveState.Idle)
     val ideaSaveState = _ideaSaveState.asStateFlow()
 
-    private val _ideaEditState = MutableStateFlow<EditIdeaState?>(null)
-    val ideaEditState = _ideaEditState.asStateFlow()
+    val editor = IdeaEditor(viewModelScope, draftStore, ideaDao::findIdea)
 
     val ideas = ideaDao
         .getAllIdeas()
@@ -123,71 +114,6 @@ class HomeViewModel(
     fun deleteIdea(idea: IdeaEntity) {
         viewModelScope.launch {
             ideaDao.deleteIdeaById(idea.id)
-        }
-    }
-
-    fun beginIdeaEdit(idea: IdeaEntity) {
-        if (_ideaEditState.value == null) {
-            _ideaEditState.value = EditIdeaState(idea.id, idea.text)
-        }
-    }
-
-    fun changeIdeaDraft(text: String) {
-        val edit = _ideaEditState.value ?: return
-        if (edit.status == EditIdeaStatus.Saving || edit.status == EditIdeaStatus.Conflict) return
-        _ideaEditState.value = edit.copy(draft = text, status = EditIdeaStatus.Editing)
-    }
-
-    fun cancelIdeaEdit() {
-        if (_ideaEditState.value?.status != EditIdeaStatus.Saving) {
-            _ideaEditState.value = null
-        }
-    }
-
-    fun previewIdeaVoice(ideaId: Long, text: String) {
-        val edit = _ideaEditState.value ?: return
-        if (edit.ideaId != ideaId || edit.voicePreview != null ||
-            edit.status == EditIdeaStatus.Saving || edit.status == EditIdeaStatus.Conflict
-        ) return
-
-        val fragment = text.trim()
-        if (fragment.isNotEmpty()) _ideaEditState.value = edit.copy(voicePreview = fragment)
-    }
-
-    fun addIdeaVoice() {
-        val edit = _ideaEditState.value ?: return
-        val fragment = edit.voicePreview ?: return
-        val separator = if (edit.draft.isEmpty() || edit.draft.endsWith('\n')) "" else "\n"
-        _ideaEditState.value = edit.copy(
-            draft = edit.draft + separator + fragment,
-            status = EditIdeaStatus.Editing,
-            voicePreview = null
-        )
-    }
-
-    fun discardIdeaVoice() {
-        val edit = _ideaEditState.value ?: return
-        _ideaEditState.value = edit.copy(voicePreview = null)
-    }
-
-    fun saveIdeaEdit() {
-        val edit = _ideaEditState.value ?: return
-        if (edit.voicePreview != null || edit.status == EditIdeaStatus.Saving ||
-            edit.status == EditIdeaStatus.Conflict
-        ) return
-        val text = edit.draft.trim()
-        if (text.isBlank()) return
-
-        _ideaEditState.value = edit.copy(status = EditIdeaStatus.Saving)
-        viewModelScope.launch {
-            _ideaEditState.value = try {
-                val updated = ideaDao.updateIdeaText(edit.ideaId, edit.originalText, text)
-                if (updated == 1) null else edit.copy(status = EditIdeaStatus.Conflict)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                edit.copy(status = EditIdeaStatus.Failed)
-            }
         }
     }
 

@@ -36,6 +36,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,6 +61,7 @@ import com.roberto.voicepocket.presentation.home.components.FolderActionsDialog
 import com.roberto.voicepocket.presentation.home.components.DeleteFolderDialog
 import com.roberto.voicepocket.presentation.home.components.DeleteIdeaDialog
 import com.roberto.voicepocket.presentation.home.components.EditIdeaDialog
+import com.roberto.voicepocket.presentation.home.components.DraftRecoveryDialog
 import com.roberto.voicepocket.presentation.home.components.EmptyIdeasState
 import com.roberto.voicepocket.presentation.home.components.FolderSelector
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
@@ -78,7 +80,7 @@ import androidx.compose.runtime.LaunchedEffect
 
 
 @Composable
-fun HomeScreen(
+internal fun HomeScreen(
     lifecycle: Lifecycle,
     ideas: List<IdeaEntity>,
     ideaSaveState: IdeaSaveState,
@@ -86,14 +88,8 @@ fun HomeScreen(
     onRetryIdeaSave: () -> Unit,
     onDiscardFailedIdea: () -> Unit,
     onIdeaSavedShown: (Long) -> Unit,
-    ideaEditState: EditIdeaState?,
-    onEditIdea: (IdeaEntity) -> Unit,
-    onIdeaDraftChange: (String) -> Unit,
-    onIdeaVoicePreview: (Long, String) -> Unit,
-    onAddIdeaVoice: () -> Unit,
-    onDiscardIdeaVoice: () -> Unit,
-    onSaveIdeaEdit: () -> Unit,
-    onCancelIdeaEdit: () -> Unit,
+    editor: IdeaEditor,
+    onCopyDraft: (String) -> Unit,
     onShareIdea: (IdeaEntity) -> Unit,
     onCopyIdea: (IdeaEntity) -> Unit,
     onDeleteIdea: (IdeaEntity) -> Unit,
@@ -104,6 +100,8 @@ fun HomeScreen(
     onRenameFolder: (FolderEntity, String) -> Unit,
 ){
     val context = LocalContext.current
+    val ideaEditState by editor.state.collectAsState()
+    val recovery by editor.recovery.collectAsState()
 
     var searchQuery by rememberSaveable {
         mutableStateOf("")
@@ -181,7 +179,7 @@ fun HomeScreen(
         { target, text ->
             when (target) {
                 VoiceTarget.NewIdea -> onIdeaRecognized(text, selectedFolderId)
-                is VoiceTarget.Edit -> onIdeaVoicePreview(target.ideaId, text)
+                is VoiceTarget.Edit -> editor.previewVoice(target.ideaId, text)
             }
         }
     )
@@ -192,9 +190,12 @@ fun HomeScreen(
         )
     }
 
-    DisposableEffect(lifecycle, speech) {
+    DisposableEffect(lifecycle, speech, editor) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) speech.cancel()
+            if (event == Lifecycle.Event.ON_STOP) {
+                speech.cancel()
+                editor.flushDraft()
+            }
         }
         lifecycle.addObserver(observer)
         onDispose {
@@ -208,8 +209,7 @@ fun HomeScreen(
         return when (target) {
             VoiceTarget.NewIdea -> ideaSaveState == IdeaSaveState.Idle && ideaEditState == null
             is VoiceTarget.Edit -> ideaEditState?.let {
-                it.ideaId == target.ideaId && it.voicePreview == null &&
-                    it.status != EditIdeaStatus.Saving && it.status != EditIdeaStatus.Conflict
+                it.ideaId == target.ideaId && it.voicePreview == null && it.canChange
             } == true
         }
     }
@@ -551,7 +551,7 @@ fun HomeScreen(
                             IdeaCard(
                                 idea = idea,
                                 modifier = Modifier.animateItem(),
-                                onEditClick = onEditIdea,
+                                onEditClick = editor::begin,
                                 onMoveClick = { selectedIdea ->
                                     ideaPendingMove = selectedIdea
                                 },
@@ -593,23 +593,28 @@ fun HomeScreen(
             }
         )
     }
+    DraftRecoveryDialog(recovery, editor::recover, editor::discardRecovery, editor::retryLoad)
     ideaEditState?.let { edit ->
         val target = VoiceTarget.Edit(edit.ideaId)
         val editorVoice = speech.state?.takeIf { it.target == target }
         EditIdeaDialog(
             edit = edit,
-            onDraftChange = onIdeaDraftChange,
+            onDraftChange = editor::changeDraft,
             voice = editorVoice,
             microphoneAvailable = speech.state?.busy != true || editorVoice != null,
             onMicrophoneClick = { handleMicrophoneClick(target) },
-            onAddVoice = onAddIdeaVoice,
-            onDiscardVoice = onDiscardIdeaVoice,
+            onAddVoice = editor::addVoice,
+            onDiscardVoice = editor::discardVoice,
+            onRetryDraft = editor::flushDraft,
+            onCopyDraft = { onCopyDraft(listOfNotNull(edit.draft, edit.voicePreview).joinToString("\n")) },
+            onKeepEditing = editor::keepEditing,
+            onConfirmDiscard = editor::confirmDiscard,
             onConfirm = {
-                if (speech.state?.let { it.target == target && it.busy } != true) onSaveIdeaEdit()
+                if (speech.state?.let { it.target == target && it.busy } != true) editor.save()
             },
             onDismiss = {
                 if (speech.state?.target == target) speech.cancel()
-                onCancelIdeaEdit()
+                editor.cancel()
             }
         )
     }

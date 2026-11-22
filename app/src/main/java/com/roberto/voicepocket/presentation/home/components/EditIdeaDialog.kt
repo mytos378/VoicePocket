@@ -10,6 +10,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.roberto.voicepocket.presentation.home.DraftPersistence
+import com.roberto.voicepocket.presentation.home.DraftRecovery
 import com.roberto.voicepocket.presentation.home.EditIdeaState
 import com.roberto.voicepocket.presentation.home.EditIdeaStatus
 import com.roberto.voicepocket.presentation.home.VoicePhase
@@ -24,16 +26,20 @@ internal fun EditIdeaDialog(
     onMicrophoneClick: () -> Unit,
     onAddVoice: () -> Unit,
     onDiscardVoice: () -> Unit,
+    onRetryDraft: () -> Unit,
+    onCopyDraft: () -> Unit,
+    onKeepEditing: () -> Unit,
+    onConfirmDiscard: () -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val saving = edit.status == EditIdeaStatus.Saving
+    val busy = edit.busy
     val conflict = edit.status == EditIdeaStatus.Conflict
     val listening = voice?.phase == VoicePhase.Listening
     val voiceBusy = voice?.busy == true
 
     AlertDialog(
-        onDismissRequest = { if (!saving) onDismiss() },
+        onDismissRequest = { if (!busy) onDismiss() },
         title = {
             Text("Editar idea")
         },
@@ -43,7 +49,7 @@ internal fun EditIdeaDialog(
                     value = edit.draft,
                     onValueChange = onDraftChange,
                     label = { Text("Contenido") },
-                    readOnly = saving || conflict,
+                    readOnly = !edit.canChange,
                     maxLines = 6
                 )
                 when (edit.status) {
@@ -51,9 +57,27 @@ internal fun EditIdeaDialog(
                     EditIdeaStatus.Conflict -> Text(
                         "La nota cambió o fue eliminada. Copia tu borrador antes de cerrar."
                     )
-                    EditIdeaStatus.Editing, EditIdeaStatus.Saving -> Unit
+                    EditIdeaStatus.Editing, EditIdeaStatus.Saving, EditIdeaStatus.Discarding -> Unit
                 }
-                if (!saving && !conflict) {
+                if (edit.recovered) Text("Borrador recuperado")
+                if (edit.discardFailed) Text("No se pudo descartar el borrador. Puedes reintentar.")
+                if (!busy) when (edit.persistence) {
+                    DraftPersistence.None -> Unit
+                    DraftPersistence.Pending -> Text("Guardando borrador…")
+                    DraftPersistence.Persisted -> Text("Borrador guardado")
+                    DraftPersistence.Failed -> {
+                        Text("No se guardó la última versión del borrador.")
+                        TextButton(onClick = onRetryDraft) { Text("Reintentar borrador") }
+                    }
+                }
+                if (conflict) {
+                    edit.voicePreview?.let {
+                        Text("Transcripción pendiente")
+                        Text(it)
+                    }
+                    TextButton(onClick = onCopyDraft) { Text("Copiar borrador") }
+                }
+                if (edit.canChange) {
                     val preview = edit.voicePreview
                     if (preview != null) {
                         Text("Transcripción")
@@ -80,12 +104,13 @@ internal fun EditIdeaDialog(
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
-                enabled = !saving && !conflict && !voiceBusy &&
+                enabled = edit.canChange && !voiceBusy &&
                     edit.voicePreview == null && edit.draft.isNotBlank()
             ) {
                 Text(
                     when (edit.status) {
                         EditIdeaStatus.Saving -> "Guardando…"
+                        EditIdeaStatus.Discarding -> "Descartando…"
                         EditIdeaStatus.Failed -> "Reintentar"
                         else -> "Guardar"
                     }
@@ -95,10 +120,55 @@ internal fun EditIdeaDialog(
         dismissButton = {
             TextButton(
                 onClick = onDismiss,
-                enabled = !saving
+                enabled = !busy
             ) {
                 Text("Cancelar")
             }
+        }
+    )
+
+    if (edit.confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = onKeepEditing,
+            title = { Text("¿Descartar borrador?") },
+            text = { Text("Se perderán los cambios del borrador. La nota conservará su contenido.") },
+            confirmButton = { TextButton(onClick = onConfirmDiscard) { Text("Descartar borrador") } },
+            dismissButton = { TextButton(onClick = onKeepEditing) { Text("Conservar borrador") } }
+        )
+    }
+}
+
+@Composable
+internal fun DraftRecoveryDialog(
+    recovery: DraftRecovery,
+    onRecover: () -> Unit,
+    onDiscard: () -> Unit,
+    onRetry: () -> Unit
+) {
+    if (recovery == DraftRecovery.Loading || recovery == DraftRecovery.None) return
+
+    val working = recovery == DraftRecovery.Working
+    val readFailed = recovery == DraftRecovery.ReadFailed
+    AlertDialog(
+        onDismissRequest = {},
+        title = { Text(if (readFailed) "No se pudo buscar un borrador" else "Borrador disponible") },
+        text = {
+            Text(
+                when (recovery) {
+                    DraftRecovery.ReadFailed -> "Reintenta la lectura para continuar."
+                    DraftRecovery.ActionFailed -> "No se pudo completar la operación. Puedes reintentar."
+                    DraftRecovery.Working -> "Procesando borrador…"
+                    else -> "Puedes retomar la edición pendiente o descartar sus cambios."
+                }
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = if (readFailed) onRetry else onRecover, enabled = !working) {
+                Text(if (readFailed) "Reintentar" else "Recuperar")
+            }
+        },
+        dismissButton = {
+            if (!readFailed) TextButton(onClick = onDiscard, enabled = !working) { Text("Descartar") }
         }
     )
 }

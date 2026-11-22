@@ -32,6 +32,10 @@ class EditIdeaDialogTest {
                         onMicrophoneClick = {},
                         onAddVoice = {},
                         onDiscardVoice = {},
+                        onRetryDraft = {},
+                        onCopyDraft = {},
+                        onKeepEditing = {},
+                        onConfirmDiscard = {},
                         onConfirm = { editor.value = edit.copy(status = EditIdeaStatus.Saving) },
                         onDismiss = { editor.value = null }
                     )
@@ -69,6 +73,10 @@ class EditIdeaDialogTest {
                     onMicrophoneClick = { preview.value = "Fragmento dictado" },
                     onAddVoice = { preview.value = null },
                     onDiscardVoice = { preview.value = null },
+                    onRetryDraft = {},
+                    onCopyDraft = {},
+                    onKeepEditing = {},
+                    onConfirmDiscard = {},
                     onConfirm = {},
                     onDismiss = {}
                 )

@@ -5,24 +5,37 @@ import java.util.UUID
 
 internal enum class IdeaDraftSaveResult { Saved, Conflict, Stale, NotReady }
 
-internal class IdeaDraftRepository(private val database: VoicePocketDatabase) {
-    private val drafts = database.ideaDraftDao()
-    private val ideas = database.ideaDao()
-
-    suspend fun read(): IdeaDraftEntity? = drafts.read()
-
-    // Called only when explicitly starting to persist an edit, never by a delayed update.
+internal interface IdeaDraftStore {
+    suspend fun read(): IdeaDraftEntity?
     suspend fun create(
         ideaId: Long,
         originalText: String,
         draft: String,
         voicePreview: String? = null
+    ): IdeaDraftEntity?
+    suspend fun update(expected: IdeaDraftEntity, draft: String, voicePreview: String?): IdeaDraftEntity?
+    suspend fun discard(sessionId: String): Boolean
+    suspend fun save(expected: IdeaDraftEntity): IdeaDraftSaveResult
+}
+
+internal class IdeaDraftRepository(private val database: VoicePocketDatabase) : IdeaDraftStore {
+    private val drafts = database.ideaDraftDao()
+    private val ideas = database.ideaDao()
+
+    override suspend fun read(): IdeaDraftEntity? = drafts.read()
+
+    // Called only when explicitly starting to persist an edit, never by a delayed update.
+    override suspend fun create(
+        ideaId: Long,
+        originalText: String,
+        draft: String,
+        voicePreview: String?
     ): IdeaDraftEntity? {
         val entry = IdeaDraftEntity(UUID.randomUUID().toString(), ideaId, originalText, draft, voicePreview)
         return entry.takeIf { drafts.insert(it) != -1L }
     }
 
-    suspend fun update(
+    override suspend fun update(
         expected: IdeaDraftEntity,
         draft: String,
         voicePreview: String?
@@ -35,9 +48,9 @@ internal class IdeaDraftRepository(private val database: VoicePocketDatabase) {
         }
     }
 
-    suspend fun discard(sessionId: String): Boolean = drafts.delete(sessionId) == 1
+    override suspend fun discard(sessionId: String): Boolean = drafts.delete(sessionId) == 1
 
-    suspend fun save(expected: IdeaDraftEntity): IdeaDraftSaveResult = database.withTransaction {
+    override suspend fun save(expected: IdeaDraftEntity): IdeaDraftSaveResult = database.withTransaction {
         val entry = drafts.read()
         if (entry == null || entry.sessionId != expected.sessionId || entry.revision != expected.revision) {
             return@withTransaction IdeaDraftSaveResult.Stale

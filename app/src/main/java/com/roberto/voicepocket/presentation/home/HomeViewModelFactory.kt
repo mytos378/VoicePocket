@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.roberto.voicepocket.data.local.FolderDao
 import com.roberto.voicepocket.data.local.IdeaDao
+import com.roberto.voicepocket.data.local.IdeaDraftStore
 
-class HomeViewModelFactory(
+internal class HomeViewModelFactory(
     private val ideaDao: IdeaDao,
-    private val folderDao: FolderDao
+    private val folderDao: FolderDao,
+    private val draftStore: IdeaDraftStore
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -15,7 +17,8 @@ class HomeViewModelFactory(
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
             return HomeViewModel(
                 ideaDao = ideaDao,
-                folderDao = folderDao
+                folderDao = folderDao,
+                draftStore = draftStore
             ) as T
         }
 

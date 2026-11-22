@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.roberto.voicepocket.data.local.IdeaDraftRepository
 import com.roberto.voicepocket.data.local.IdeaEntity
 import com.roberto.voicepocket.data.local.VoicePocketDatabase
 import com.roberto.voicepocket.presentation.home.HomeScreen
@@ -30,7 +31,8 @@ class MainActivity : ComponentActivity() {
         val database = VoicePocketDatabase.getInstance(applicationContext)
         val factory = HomeViewModelFactory(
             ideaDao = database.ideaDao(),
-            folderDao = database.folderDao()
+            folderDao = database.folderDao(),
+            draftStore = IdeaDraftRepository(database)
         )
 
         setContent {
@@ -43,7 +45,6 @@ class MainActivity : ComponentActivity() {
 
                 val folders by homeViewModel.folders.collectAsState()
                 val ideaSaveState by homeViewModel.ideaSaveState.collectAsState()
-                val ideaEditState by homeViewModel.ideaEditState.collectAsState()
 
                 HomeScreen(
                     lifecycle = this@MainActivity.lifecycle,
@@ -54,14 +55,8 @@ class MainActivity : ComponentActivity() {
                     onRetryIdeaSave = homeViewModel::retryIdeaSave,
                     onDiscardFailedIdea = homeViewModel::discardFailedIdea,
                     onIdeaSavedShown = homeViewModel::acknowledgeIdeaSaved,
-                    ideaEditState = ideaEditState,
-                    onEditIdea = homeViewModel::beginIdeaEdit,
-                    onIdeaDraftChange = homeViewModel::changeIdeaDraft,
-                    onIdeaVoicePreview = homeViewModel::previewIdeaVoice,
-                    onAddIdeaVoice = homeViewModel::addIdeaVoice,
-                    onDiscardIdeaVoice = homeViewModel::discardIdeaVoice,
-                    onSaveIdeaEdit = homeViewModel::saveIdeaEdit,
-                    onCancelIdeaEdit = homeViewModel::cancelIdeaEdit,
+                    editor = homeViewModel.editor,
+                    onCopyDraft = { copyText(it, "Borrador copiado") },
                     onShareIdea = ::shareIdea,
                     onCopyIdea = ::copyIdea,
                     onDeleteIdea = homeViewModel::deleteIdea,
@@ -93,14 +88,16 @@ class MainActivity : ComponentActivity() {
             )
         )
     }
-    private fun copyIdea(idea: IdeaEntity) {
+    private fun copyIdea(idea: IdeaEntity) = copyText(idea.text, "Idea copiada")
+
+    private fun copyText(text: String, confirmation: String) {
         val clipboardManager = getSystemService(
             Context.CLIPBOARD_SERVICE
         ) as ClipboardManager
 
         val clipData = ClipData.newPlainText(
             "Idea de VoicePocket",
-            idea.text
+            text
         )
 
         clipboardManager.setPrimaryClip(clipData)
@@ -108,7 +105,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             Toast.makeText(
                 this,
-                "Idea copiada",
+                confirmation,
                 Toast.LENGTH_SHORT
             ).show()
         }

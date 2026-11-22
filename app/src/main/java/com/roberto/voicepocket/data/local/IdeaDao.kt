@@ -15,6 +15,9 @@ interface IdeaDao {
     @Query("UPDATE ideas SET text = :text WHERE id = :ideaId AND text = :originalText")
     suspend fun updateIdeaText(ideaId: Long, originalText: String, text: String): Int
 
+    @Query("SELECT * FROM ideas WHERE id = :ideaId")
+    suspend fun findIdea(ideaId: Long): IdeaEntity?
+
     @Query("SELECT * FROM ideas ORDER BY createdAt DESC")
     fun getAllIdeas(): Flow<List<IdeaEntity>>
 

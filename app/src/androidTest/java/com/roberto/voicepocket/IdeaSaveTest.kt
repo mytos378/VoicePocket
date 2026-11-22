@@ -7,6 +7,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.roberto.voicepocket.data.local.FolderEntity
 import com.roberto.voicepocket.data.local.IdeaDao
+import com.roberto.voicepocket.data.local.IdeaDraftRepository
 import com.roberto.voicepocket.data.local.IdeaEntity
 import com.roberto.voicepocket.data.local.VoicePocketDatabase
 import com.roberto.voicepocket.presentation.home.HomeViewModel
@@ -54,7 +55,7 @@ class IdeaSaveTest {
                 return dao.insertIdea(idea)
             }
         }
-        viewModel = HomeViewModel(delayedDao, database.folderDao())
+        viewModel = HomeViewModel(delayedDao, database.folderDao(), IdeaDraftRepository(database))
 
         withContext(Dispatchers.Main) {
             viewModel.saveIdea("Primera transcripción")
@@ -91,7 +92,7 @@ class IdeaSaveTest {
                 return dao.insertIdea(idea)
             }
         }
-        viewModel = HomeViewModel(failingDao, folders)
+        viewModel = HomeViewModel(failingDao, folders, IdeaDraftRepository(database))
 
         withContext(Dispatchers.Main) { viewModel.saveIdea("Texto dictado", folderId) }
         val failed = withTimeout(5_000) {
