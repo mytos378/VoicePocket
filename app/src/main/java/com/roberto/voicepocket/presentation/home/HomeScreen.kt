@@ -1,12 +1,7 @@
 package com.roberto.voicepocket.presentation.home
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
@@ -46,6 +41,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -55,6 +51,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.roberto.voicepocket.data.local.FolderEntity
 import com.roberto.voicepocket.data.local.IdeaEntity
 import com.roberto.voicepocket.presentation.home.components.CreateFolderDialog
@@ -75,13 +73,13 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import com.roberto.voicepocket.presentation.home.components.RenameFolderDialog
 import kotlinx.coroutines.launch
-import java.util.Locale
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
 
 
 @Composable
 fun HomeScreen(
+    lifecycle: Lifecycle,
     ideas: List<IdeaEntity>,
     ideaSaveState: IdeaSaveState,
     onIdeaRecognized: (String, Long?) -> Unit,
@@ -91,6 +89,9 @@ fun HomeScreen(
     ideaEditState: EditIdeaState?,
     onEditIdea: (IdeaEntity) -> Unit,
     onIdeaDraftChange: (String) -> Unit,
+    onIdeaVoicePreview: (Long, String) -> Unit,
+    onAddIdeaVoice: () -> Unit,
+    onDiscardIdeaVoice: () -> Unit,
     onSaveIdeaEdit: () -> Unit,
     onCancelIdeaEdit: () -> Unit,
     onShareIdea: (IdeaEntity) -> Unit,
@@ -103,12 +104,6 @@ fun HomeScreen(
     onRenameFolder: (FolderEntity, String) -> Unit,
 ){
     val context = LocalContext.current
-
-    var isListening by remember { mutableStateOf(false) }
-    var activeRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
-    var requestingPermission by remember { mutableStateOf(false) }
-    var recognizedText by remember { mutableStateOf("") }
-    var statusMessage by remember { mutableStateOf("Pulsa para hablar") }
 
     var searchQuery by rememberSaveable {
         mutableStateOf("")
@@ -182,143 +177,68 @@ fun HomeScreen(
         else -> "all"
     }
 
-    val recognitionIntent = remember {
-        Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-            putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-            )
-            putExtra(
-                RecognizerIntent.EXTRA_LANGUAGE,
-                Locale.getDefault().toLanguageTag()
-            )
-            putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
-        }
-    }
-
-    fun startListening() {
-        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
-            statusMessage = "El reconocimiento de voz no está disponible"
-            return
-        }
-
-        val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
-        activeRecognizer = recognizer
-        recognizedText = ""
-        statusMessage = "Preparando micrófono..."
-
-        fun finishSession() {
-            activeRecognizer = null
-            isListening = false
-            recognizedText = ""
-            recognizer.destroy()
-        }
-
-        recognizer.setRecognitionListener(
-            object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    if (activeRecognizer !== recognizer) return
-                    isListening = true
-                    statusMessage = "Escuchando..."
-                }
-
-                override fun onBeginningOfSpeech() {
-                    if (activeRecognizer === recognizer) statusMessage = "Te escucho..."
-                }
-
-                override fun onRmsChanged(rmsdB: Float) = Unit
-
-                override fun onBufferReceived(buffer: ByteArray?) = Unit
-
-                override fun onEndOfSpeech() {
-                    if (activeRecognizer !== recognizer) return
-                    isListening = false
-                    statusMessage = "Procesando..."
-                }
-
-                override fun onError(error: Int) {
-                    if (activeRecognizer !== recognizer) return
-                    finishSession()
-                    statusMessage = speechErrorMessage(error)
-                }
-
-                override fun onResults(results: Bundle?) {
-                    if (activeRecognizer !== recognizer) return
-                    val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        ?.firstOrNull()
-                        .orEmpty()
-                        .trim()
-
-                    finishSession()
-                    if (text.isBlank()) {
-                        statusMessage = "No se reconoció ninguna frase"
-                    } else {
-                        statusMessage = "Pulsa para hablar"
-                        onIdeaRecognized(text, selectedFolderId)
-                    }
-                }
-
-                override fun onPartialResults(partialResults: Bundle?) {
-                    if (activeRecognizer !== recognizer) return
-                    partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        ?.firstOrNull()
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { recognizedText = it }
-                }
-
-                override fun onEvent(eventType: Int, params: Bundle?) = Unit
+    val routeVoiceResult by rememberUpdatedState<(VoiceTarget, String) -> Unit>(
+        { target, text ->
+            when (target) {
+                VoiceTarget.NewIdea -> onIdeaRecognized(text, selectedFolderId)
+                is VoiceTarget.Edit -> onIdeaVoicePreview(target.ideaId, text)
             }
+        }
+    )
+    val speech = remember(context) {
+        SpeechRecognitionSession(
+            createRecognizer = { androidVoiceRecognizer(context) },
+            onResult = { target, text -> routeVoiceResult(target, text) }
         )
-        recognizer.startListening(recognitionIntent)
     }
 
-    DisposableEffect(Unit) {
+    DisposableEffect(lifecycle, speech) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_STOP) speech.cancel()
+        }
+        lifecycle.addObserver(observer)
         onDispose {
-            val recognizer = activeRecognizer
-            activeRecognizer = null
-            recognizer?.destroy()
+            lifecycle.removeObserver(observer)
+            speech.cancel()
         }
     }
 
+    fun canStartVoice(target: VoiceTarget): Boolean {
+        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return false
+        return when (target) {
+            VoiceTarget.NewIdea -> ideaSaveState == IdeaSaveState.Idle && ideaEditState == null
+            is VoiceTarget.Edit -> ideaEditState?.let {
+                it.ideaId == target.ideaId && it.voicePreview == null &&
+                    it.status != EditIdeaStatus.Saving && it.status != EditIdeaStatus.Conflict
+            } == true
+        }
+    }
 
     val microphonePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { permissionGranted ->
-        requestingPermission = false
-        if (permissionGranted) {
-            startListening()
-        } else {
-            statusMessage = "Se necesita permiso para usar el micrófono"
-        }
+        speech.permissionResult(permissionGranted, ::canStartVoice)
     }
 
-    fun handleMicrophoneClick() {
-        if (ideaSaveState != IdeaSaveState.Idle || requestingPermission) return
-
-        if (isListening) {
-            isListening = false
-            activeRecognizer?.stopListening()
-            statusMessage = "Procesando..."
+    fun handleMicrophoneClick(target: VoiceTarget) {
+        val current = speech.state
+        if (current?.busy == true) {
+            speech.stop(target)
             return
         }
+        if (!canStartVoice(target)) return
 
-        if (activeRecognizer != null) return
-
-        val permissionGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.RECORD_AUDIO
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (permissionGranted) {
-            startListening()
-        } else {
-            requestingPermission = true
-            microphonePermissionLauncher.launch(
-                Manifest.permission.RECORD_AUDIO
-            )
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        speech.request(target, granted) {
+            microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
     }
+
+    val mainVoice = speech.state?.takeIf { it.target == VoiceTarget.NewIdea }
+    val isListening = mainVoice?.phase == VoicePhase.Listening
+    val recognizedText = mainVoice?.partial.orEmpty()
+
 
     val savedIdea = ideaSaveState as? IdeaSaveState.Saved
     LaunchedEffect(savedIdea) {
@@ -378,7 +298,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = ::handleMicrophoneClick,
+                onClick = { handleMicrophoneClick(VoiceTarget.NewIdea) },
                 modifier = Modifier.size(
                     fabSize
                 ),
@@ -425,7 +345,7 @@ fun HomeScreen(
                 text = when (ideaSaveState) {
                     is IdeaSaveState.Saving -> "Guardando idea..."
                     is IdeaSaveState.Failed -> "No se pudo guardar la idea"
-                    else -> statusMessage
+                    else -> mainVoice?.message ?: "Pulsa para hablar"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isListening) {
@@ -674,11 +594,23 @@ fun HomeScreen(
         )
     }
     ideaEditState?.let { edit ->
+        val target = VoiceTarget.Edit(edit.ideaId)
+        val editorVoice = speech.state?.takeIf { it.target == target }
         EditIdeaDialog(
             edit = edit,
             onDraftChange = onIdeaDraftChange,
-            onConfirm = onSaveIdeaEdit,
-            onDismiss = onCancelIdeaEdit
+            voice = editorVoice,
+            microphoneAvailable = speech.state?.busy != true || editorVoice != null,
+            onMicrophoneClick = { handleMicrophoneClick(target) },
+            onAddVoice = onAddIdeaVoice,
+            onDiscardVoice = onDiscardIdeaVoice,
+            onConfirm = {
+                if (speech.state?.let { it.target == target && it.busy } != true) onSaveIdeaEdit()
+            },
+            onDismiss = {
+                if (speech.state?.target == target) speech.cancel()
+                onCancelIdeaEdit()
+            }
         )
     }
     ideaPendingMove?.let { idea ->
@@ -750,37 +682,5 @@ fun HomeScreen(
                 folderPendingRename = null
             }
         )
-    }
-}
-
-private fun speechErrorMessage(error: Int): String {
-    return when (error) {
-        SpeechRecognizer.ERROR_AUDIO ->
-            "Ocurrió un problema con el micrófono"
-
-        SpeechRecognizer.ERROR_CLIENT ->
-            "No fue posible iniciar el reconocimiento"
-
-        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS ->
-            "No existe permiso para usar el micrófono"
-
-        SpeechRecognizer.ERROR_NETWORK,
-        SpeechRecognizer.ERROR_NETWORK_TIMEOUT ->
-            "Revisa tu conexión e inténtalo nuevamente"
-
-        SpeechRecognizer.ERROR_NO_MATCH ->
-            "No entendí la frase. Inténtalo otra vez"
-
-        SpeechRecognizer.ERROR_RECOGNIZER_BUSY ->
-            "El reconocedor está ocupado. Inténtalo nuevamente"
-
-        SpeechRecognizer.ERROR_SERVER ->
-            "El servicio de voz no está disponible"
-
-        SpeechRecognizer.ERROR_SPEECH_TIMEOUT ->
-            "No escuché ninguna voz"
-
-        else ->
-            "No fue posible reconocer la voz"
     }
 }

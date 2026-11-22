@@ -26,7 +26,8 @@ data class EditIdeaState(
     val ideaId: Long,
     val originalText: String,
     val draft: String = originalText,
-    val status: EditIdeaStatus = EditIdeaStatus.Editing
+    val status: EditIdeaStatus = EditIdeaStatus.Editing,
+    val voicePreview: String? = null
 )
 
 class HomeViewModel(
@@ -143,9 +144,37 @@ class HomeViewModel(
         }
     }
 
+    fun previewIdeaVoice(ideaId: Long, text: String) {
+        val edit = _ideaEditState.value ?: return
+        if (edit.ideaId != ideaId || edit.voicePreview != null ||
+            edit.status == EditIdeaStatus.Saving || edit.status == EditIdeaStatus.Conflict
+        ) return
+
+        val fragment = text.trim()
+        if (fragment.isNotEmpty()) _ideaEditState.value = edit.copy(voicePreview = fragment)
+    }
+
+    fun addIdeaVoice() {
+        val edit = _ideaEditState.value ?: return
+        val fragment = edit.voicePreview ?: return
+        val separator = if (edit.draft.isEmpty() || edit.draft.endsWith('\n')) "" else "\n"
+        _ideaEditState.value = edit.copy(
+            draft = edit.draft + separator + fragment,
+            status = EditIdeaStatus.Editing,
+            voicePreview = null
+        )
+    }
+
+    fun discardIdeaVoice() {
+        val edit = _ideaEditState.value ?: return
+        _ideaEditState.value = edit.copy(voicePreview = null)
+    }
+
     fun saveIdeaEdit() {
         val edit = _ideaEditState.value ?: return
-        if (edit.status == EditIdeaStatus.Saving || edit.status == EditIdeaStatus.Conflict) return
+        if (edit.voicePreview != null || edit.status == EditIdeaStatus.Saving ||
+            edit.status == EditIdeaStatus.Conflict
+        ) return
         val text = edit.draft.trim()
         if (text.isBlank()) return
 

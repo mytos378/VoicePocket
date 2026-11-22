@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
                 val ideaEditState by homeViewModel.ideaEditState.collectAsState()
 
                 HomeScreen(
+                    lifecycle = this@MainActivity.lifecycle,
                     ideas = ideas,
                     folders = folders,
                     ideaSaveState = ideaSaveState,
@@ -56,6 +57,9 @@ class MainActivity : ComponentActivity() {
                     ideaEditState = ideaEditState,
                     onEditIdea = homeViewModel::beginIdeaEdit,
                     onIdeaDraftChange = homeViewModel::changeIdeaDraft,
+                    onIdeaVoicePreview = homeViewModel::previewIdeaVoice,
+                    onAddIdeaVoice = homeViewModel::addIdeaVoice,
+                    onDiscardIdeaVoice = homeViewModel::discardIdeaVoice,
                     onSaveIdeaEdit = homeViewModel::saveIdeaEdit,
                     onCancelIdeaEdit = homeViewModel::cancelIdeaEdit,
                     onShareIdea = ::shareIdea,

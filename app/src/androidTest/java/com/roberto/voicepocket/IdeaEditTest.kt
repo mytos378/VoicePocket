@@ -141,6 +141,59 @@ class IdeaEditTest {
         assertEquals(emptyList<IdeaEntity>(), dao.getAllIdeas().first())
     }
 
+    @Test
+    fun reviewsAndAppendsOnceToLatestDraftBeforeSaving() = runBlocking {
+        val dao = database.ideaDao()
+        val original = insertOriginal()
+        viewModel = HomeViewModel(dao, database.folderDao())
+        withContext(Dispatchers.Main) {
+            viewModel.beginIdeaEdit(original)
+            viewModel.previewIdeaVoice(original.id + 1, "Otro destino")
+            assertEquals(null, viewModel.ideaEditState.value?.voicePreview)
+            viewModel.previewIdeaVoice(original.id, "  Fragmento  ")
+            viewModel.previewIdeaVoice(original.id, "Duplicado")
+            viewModel.saveIdeaEdit()
+            assertEquals("Fragmento", viewModel.ideaEditState.value?.voicePreview)
+            assertEquals(original.text, viewModel.ideaEditState.value?.draft)
+        }
+        assertEquals(original, dao.getAllIdeas().first().single())
+
+        withContext(Dispatchers.Main) {
+            viewModel.changeIdeaDraft("Edición manual\n")
+            viewModel.addIdeaVoice()
+            viewModel.addIdeaVoice()
+            assertEquals("Edición manual\nFragmento", viewModel.ideaEditState.value?.draft)
+            viewModel.saveIdeaEdit()
+        }
+        awaitStatus(null)
+        assertEquals(
+            original.copy(text = "Edición manual\nFragmento"),
+            dao.getAllIdeas().first().single()
+        )
+    }
+
+    @Test
+    fun discardAndCancelDoNotPersistDictatedText() = runBlocking {
+        val dao = database.ideaDao()
+        val original = insertOriginal()
+        viewModel = HomeViewModel(dao, database.folderDao())
+        withContext(Dispatchers.Main) {
+            viewModel.beginIdeaEdit(original)
+            viewModel.previewIdeaVoice(original.id, "Descartado")
+            viewModel.discardIdeaVoice()
+            assertEquals(null, viewModel.ideaEditState.value?.voicePreview)
+            assertEquals(original.text, viewModel.ideaEditState.value?.draft)
+
+            viewModel.previewIdeaVoice(original.id, "Aceptado")
+            viewModel.addIdeaVoice()
+            assertEquals("${original.text}\nAceptado", viewModel.ideaEditState.value?.draft)
+            viewModel.cancelIdeaEdit()
+            viewModel.previewIdeaVoice(original.id, "Resultado tardío")
+            assertEquals(null, viewModel.ideaEditState.value)
+        }
+        assertEquals(original, dao.getAllIdeas().first().single())
+    }
+
     private suspend fun insertOriginal(folderId: Long? = null): IdeaEntity {
         val idea = IdeaEntity(text = "Texto original", createdAt = 123L, folderId = folderId)
         return idea.copy(id = database.ideaDao().insertIdea(idea))

@@ -27,6 +27,11 @@ class EditIdeaDialogTest {
                     EditIdeaDialog(
                         edit = edit,
                         onDraftChange = { editor.value = edit.copy(draft = it) },
+                        voice = null,
+                        microphoneAvailable = true,
+                        onMicrophoneClick = {},
+                        onAddVoice = {},
+                        onDiscardVoice = {},
                         onConfirm = { editor.value = edit.copy(status = EditIdeaStatus.Saving) },
                         onDismiss = { editor.value = null }
                     )
@@ -49,5 +54,32 @@ class EditIdeaDialogTest {
 
         compose.runOnIdle { editor.value = null }
         compose.onNodeWithText("Editar idea").assertDoesNotExist()
+    }
+
+    @Test
+    fun presentsFinalTranscriptForReviewBeforeEnablingSave() {
+        val preview = mutableStateOf<String?>(null)
+        compose.setContent {
+            MaterialTheme {
+                EditIdeaDialog(
+                    edit = EditIdeaState(1, "Original", voicePreview = preview.value),
+                    onDraftChange = {},
+                    voice = null,
+                    microphoneAvailable = true,
+                    onMicrophoneClick = { preview.value = "Fragmento dictado" },
+                    onAddVoice = { preview.value = null },
+                    onDiscardVoice = { preview.value = null },
+                    onConfirm = {},
+                    onDismiss = {}
+                )
+            }
+        }
+        compose.onNodeWithText("Agregar por voz").performClick()
+        compose.onNodeWithText("Fragmento dictado").assertIsDisplayed()
+        compose.onNodeWithText("Original").assertIsDisplayed()
+        compose.onNodeWithText("Guardar").assertIsNotEnabled()
+        compose.onNodeWithText("Descartar").performClick()
+        compose.onNodeWithText("Fragmento dictado").assertDoesNotExist()
+        compose.onNodeWithText("Agregar por voz").assertIsDisplayed()
     }
 }
