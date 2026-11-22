@@ -10,15 +10,17 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [
         IdeaEntity::class,
-        FolderEntity::class
+        FolderEntity::class,
+        IdeaDraftEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class VoicePocketDatabase : RoomDatabase() {
 
     abstract fun ideaDao(): IdeaDao
     abstract fun folderDao(): FolderDao
+    internal abstract fun ideaDraftDao(): IdeaDraftDao
 
     companion object {
 
@@ -46,18 +48,32 @@ abstract class VoicePocketDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE `idea_drafts` (
+                        `slot` INTEGER NOT NULL PRIMARY KEY,
+                        `sessionId` TEXT NOT NULL,
+                        `revision` INTEGER NOT NULL,
+                        `ideaId` INTEGER NOT NULL,
+                        `originalText` TEXT NOT NULL,
+                        `draft` TEXT NOT NULL,
+                        `voicePreview` TEXT
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        internal fun open(context: Context, name: String): VoicePocketDatabase =
+            Room.databaseBuilder(context.applicationContext, VoicePocketDatabase::class.java, name)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .build()
+
         fun getInstance(context: Context): VoicePocketDatabase {
             return INSTANCE ?: synchronized(this) {
-                val instance = Room.databaseBuilder(
-                    context.applicationContext,
-                    VoicePocketDatabase::class.java,
-                    "voicepocket_database"
-                )
-                    .addMigrations(MIGRATION_1_2)
-                    .build()
-
-                INSTANCE = instance
-                instance
+                INSTANCE ?: open(context, "voicepocket_database").also { INSTANCE = it }
             }
         }
     }
