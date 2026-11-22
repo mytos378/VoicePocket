@@ -6,14 +6,27 @@ import com.roberto.voicepocket.data.local.FolderDao
 import com.roberto.voicepocket.data.local.FolderEntity
 import com.roberto.voicepocket.data.local.IdeaDao
 import com.roberto.voicepocket.data.local.IdeaEntity
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+sealed interface IdeaSaveState {
+    data object Idle : IdeaSaveState
+    data class Saving(val idea: IdeaEntity) : IdeaSaveState
+    data class Failed(val idea: IdeaEntity) : IdeaSaveState
+    data class Saved(val ideaId: Long) : IdeaSaveState
+}
 
 class HomeViewModel(
     private val ideaDao: IdeaDao,
     private val folderDao: FolderDao
 ) : ViewModel() {
+
+    private val _ideaSaveState = MutableStateFlow<IdeaSaveState>(IdeaSaveState.Idle)
+    val ideaSaveState = _ideaSaveState.asStateFlow()
 
     val ideas = ideaDao
         .getAllIdeas()
@@ -59,15 +72,38 @@ class HomeViewModel(
     ) {
         val cleanText = text.trim()
 
-        if (cleanText.isBlank()) return
+        if (cleanText.isBlank() || _ideaSaveState.value != IdeaSaveState.Idle) return
 
+        insertIdea(IdeaEntity(text = cleanText, folderId = folderId))
+    }
+
+    fun retryIdeaSave() {
+        val failed = _ideaSaveState.value as? IdeaSaveState.Failed ?: return
+        insertIdea(failed.idea)
+    }
+
+    fun discardFailedIdea() {
+        if (_ideaSaveState.value is IdeaSaveState.Failed) {
+            _ideaSaveState.value = IdeaSaveState.Idle
+        }
+    }
+
+    fun acknowledgeIdeaSaved(ideaId: Long) {
+        if (_ideaSaveState.value == IdeaSaveState.Saved(ideaId)) {
+            _ideaSaveState.value = IdeaSaveState.Idle
+        }
+    }
+
+    private fun insertIdea(idea: IdeaEntity) {
+        _ideaSaveState.value = IdeaSaveState.Saving(idea)
         viewModelScope.launch {
-            ideaDao.insertIdea(
-                IdeaEntity(
-                    text = cleanText,
-                    folderId = folderId
-                )
-            )
+            _ideaSaveState.value = try {
+                IdeaSaveState.Saved(ideaDao.insertIdea(idea))
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                IdeaSaveState.Failed(idea)
+            }
         }
     }
 

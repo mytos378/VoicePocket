@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -82,7 +83,11 @@ import androidx.compose.runtime.LaunchedEffect
 @Composable
 fun HomeScreen(
     ideas: List<IdeaEntity>,
+    ideaSaveState: IdeaSaveState,
     onIdeaRecognized: (String, Long?) -> Unit,
+    onRetryIdeaSave: () -> Unit,
+    onDiscardFailedIdea: () -> Unit,
+    onIdeaSavedShown: (Long) -> Unit,
     onEditIdea: (IdeaEntity, String) -> Unit,
     onShareIdea: (IdeaEntity) -> Unit,
     onCopyIdea: (IdeaEntity) -> Unit,
@@ -96,6 +101,8 @@ fun HomeScreen(
     val context = LocalContext.current
 
     var isListening by remember { mutableStateOf(false) }
+    var activeRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
+    var requestingPermission by remember { mutableStateOf(false) }
     var recognizedText by remember { mutableStateOf("") }
     var statusMessage by remember { mutableStateOf("Pulsa para hablar") }
 
@@ -139,9 +146,7 @@ fun HomeScreen(
         mutableStateOf<FolderEntity?>(null)
     }
 
-    var scrollToTopAfterCapture by remember {
-        mutableStateOf(false)
-    }
+    var savedIdeaToReveal by remember { mutableStateOf<Long?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -192,25 +197,34 @@ fun HomeScreen(
         }
     }
 
-    val speechRecognizer = remember {
-        if (SpeechRecognizer.isRecognitionAvailable(context)) {
-            SpeechRecognizer.createSpeechRecognizer(context)
-        } else {
-            null
+    fun startListening() {
+        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+            statusMessage = "El reconocimiento de voz no está disponible"
+            return
         }
-    }
 
-    DisposableEffect(speechRecognizer) {
-        speechRecognizer?.setRecognitionListener(
+        val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
+        activeRecognizer = recognizer
+        recognizedText = ""
+        statusMessage = "Preparando micrófono..."
+
+        fun finishSession() {
+            activeRecognizer = null
+            isListening = false
+            recognizedText = ""
+            recognizer.destroy()
+        }
+
+        recognizer.setRecognitionListener(
             object : RecognitionListener {
-
                 override fun onReadyForSpeech(params: Bundle?) {
+                    if (activeRecognizer !== recognizer) return
                     isListening = true
                     statusMessage = "Escuchando..."
                 }
 
                 override fun onBeginningOfSpeech() {
-                    statusMessage = "Te escucho..."
+                    if (activeRecognizer === recognizer) statusMessage = "Te escucho..."
                 }
 
                 override fun onRmsChanged(rmsdB: Float) = Unit
@@ -218,60 +232,36 @@ fun HomeScreen(
                 override fun onBufferReceived(buffer: ByteArray?) = Unit
 
                 override fun onEndOfSpeech() {
+                    if (activeRecognizer !== recognizer) return
+                    isListening = false
                     statusMessage = "Procesando..."
                 }
 
                 override fun onError(error: Int) {
-                    isListening = false
-                    recognizedText = ""
+                    if (activeRecognizer !== recognizer) return
+                    finishSession()
                     statusMessage = speechErrorMessage(error)
                 }
 
                 override fun onResults(results: Bundle?) {
-                    isListening = false
-
-                    val matches = results?.getStringArrayList(
-                        SpeechRecognizer.RESULTS_RECOGNITION
-                    )
-
-                    recognizedText = matches
+                    if (activeRecognizer !== recognizer) return
+                    val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         ?.firstOrNull()
                         .orEmpty()
                         .trim()
 
-                    statusMessage = if (recognizedText.isBlank()) {
-                        "No se reconoció ninguna frase"
+                    finishSession()
+                    if (text.isBlank()) {
+                        statusMessage = "No se reconoció ninguna frase"
                     } else {
-                        val targetFolderId = when {
-                            isUnfiledSelected -> null
-                            selectedFolderId != null -> selectedFolderId
-                            else -> null
-                        }
-
-                        scrollToTopAfterCapture = true
-
-                        onIdeaRecognized(
-                            recognizedText,
-                            targetFolderId
-                        )
-
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = "Idea guardada"
-                            )
-                        }
-
-                        recognizedText = ""
-                        "Pulsa para hablar"
+                        statusMessage = "Pulsa para hablar"
+                        onIdeaRecognized(text, selectedFolderId)
                     }
                 }
 
                 override fun onPartialResults(partialResults: Bundle?) {
-                    val partialMatches = partialResults?.getStringArrayList(
-                        SpeechRecognizer.RESULTS_RECOGNITION
-                    )
-
-                    partialMatches
+                    if (activeRecognizer !== recognizer) return
+                    partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         ?.firstOrNull()
                         ?.takeIf { it.isNotBlank() }
                         ?.let { recognizedText = it }
@@ -280,26 +270,22 @@ fun HomeScreen(
                 override fun onEvent(eventType: Int, params: Bundle?) = Unit
             }
         )
+        recognizer.startListening(recognitionIntent)
+    }
 
+    DisposableEffect(Unit) {
         onDispose {
-            speechRecognizer?.destroy()
+            val recognizer = activeRecognizer
+            activeRecognizer = null
+            recognizer?.destroy()
         }
     }
 
-    fun startListening() {
-        if (speechRecognizer == null) {
-            statusMessage = "El reconocimiento de voz no está disponible"
-            return
-        }
-
-        recognizedText = ""
-        statusMessage = "Preparando micrófono..."
-        speechRecognizer.startListening(recognitionIntent)
-    }
 
     val microphonePermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { permissionGranted ->
+        requestingPermission = false
         if (permissionGranted) {
             startListening()
         } else {
@@ -308,11 +294,16 @@ fun HomeScreen(
     }
 
     fun handleMicrophoneClick() {
+        if (ideaSaveState != IdeaSaveState.Idle || requestingPermission) return
+
         if (isListening) {
-            speechRecognizer?.stopListening()
+            isListening = false
+            activeRecognizer?.stopListening()
             statusMessage = "Procesando..."
             return
         }
+
+        if (activeRecognizer != null) return
 
         val permissionGranted = ContextCompat.checkSelfPermission(
             context,
@@ -322,9 +313,21 @@ fun HomeScreen(
         if (permissionGranted) {
             startListening()
         } else {
+            requestingPermission = true
             microphonePermissionLauncher.launch(
                 Manifest.permission.RECORD_AUDIO
             )
+        }
+    }
+
+    val savedIdea = ideaSaveState as? IdeaSaveState.Saved
+    LaunchedEffect(savedIdea) {
+        if (savedIdea != null) {
+            savedIdeaToReveal = savedIdea.ideaId
+            onIdeaSavedShown(savedIdea.ideaId)
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Idea guardada")
+            }
         }
     }
 
@@ -419,7 +422,11 @@ fun HomeScreen(
             VoicePocketDimens.SpaceXS
 
             Text(
-                text = statusMessage,
+                text = when (ideaSaveState) {
+                    is IdeaSaveState.Saving -> "Guardando idea..."
+                    is IdeaSaveState.Failed -> "No se pudo guardar la idea"
+                    else -> statusMessage
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (isListening) {
                     MaterialTheme.colorScheme.primary
@@ -502,6 +509,14 @@ fun HomeScreen(
 
             VoicePocketDimens.SpaceL
 
+            if (ideaSaveState is IdeaSaveState.Failed) {
+                Text(ideaSaveState.idea.text)
+                Row {
+                    TextButton(onClick = onRetryIdeaSave) { Text("Reintentar") }
+                    TextButton(onClick = onDiscardFailedIdea) { Text("Descartar") }
+                }
+            }
+
             if (recognizedText.isNotBlank()) {
                 VoicePocketDimens.SpaceS
 
@@ -528,22 +543,15 @@ fun HomeScreen(
             ) {
                 val listState = rememberLazyListState()
 
-                LaunchedEffect(ideas.size) {
-                    if (scrollToTopAfterCapture) {
-                        val newestIdeaId = ideas.firstOrNull()?.id
+                LaunchedEffect(savedIdeaToReveal, ideas) {
+                    val savedId = savedIdeaToReveal ?: return@LaunchedEffect
+                    if (ideas.none { it.id == savedId }) return@LaunchedEffect
 
-                        val newIdeaIsVisible = newestIdeaId != null &&
-                                filteredIdeas.any { idea ->
-                                    idea.id == newestIdeaId
-                                }
-
-                        if (newIdeaIsVisible) {
-                            listState.animateScrollToItem(0)
-                        }
-
-                        scrollToTopAfterCapture = false
-                    }
+                    val index = filteredIdeas.indexOfFirst { it.id == savedId }
+                    if (index >= 0) listState.animateScrollToItem(index)
+                    savedIdeaToReveal = null
                 }
+
             when {
                 ideas.isEmpty() -> {
                     EmptyIdeasState()

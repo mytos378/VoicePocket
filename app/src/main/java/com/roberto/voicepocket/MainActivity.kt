@@ -42,11 +42,16 @@ class MainActivity : ComponentActivity() {
                 val ideas by homeViewModel.ideas.collectAsState()
 
                 val folders by homeViewModel.folders.collectAsState()
+                val ideaSaveState by homeViewModel.ideaSaveState.collectAsState()
 
                 HomeScreen(
                     ideas = ideas,
                     folders = folders,
+                    ideaSaveState = ideaSaveState,
                     onIdeaRecognized = homeViewModel::saveIdea,
+                    onRetryIdeaSave = homeViewModel::retryIdeaSave,
+                    onDiscardFailedIdea = homeViewModel::discardFailedIdea,
+                    onIdeaSavedShown = homeViewModel::acknowledgeIdeaSaved,
                     onEditIdea = homeViewModel::updateIdea,
                     onShareIdea = ::shareIdea,
                     onCopyIdea = ::copyIdea,

@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 interface IdeaDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertIdea(idea: IdeaEntity)
+    suspend fun insertIdea(idea: IdeaEntity): Long
 
     @Update
     suspend fun updateIdea(idea: IdeaEntity)
