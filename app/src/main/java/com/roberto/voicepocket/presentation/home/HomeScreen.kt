@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,6 +66,7 @@ import com.roberto.voicepocket.presentation.home.components.DraftRecoveryDialog
 import com.roberto.voicepocket.presentation.home.components.EmptyIdeasState
 import com.roberto.voicepocket.presentation.home.components.FolderSelector
 import com.roberto.voicepocket.presentation.home.components.IdeaCard
+import com.roberto.voicepocket.presentation.home.components.IdeaOrderMenu
 import com.roberto.voicepocket.presentation.home.components.MoveIdeaToFolderDialog
 import com.roberto.voicepocket.ui.theme.VoicePocketDimens
 import androidx.compose.animation.AnimatedContent
@@ -93,7 +95,7 @@ internal fun HomeScreen(
     onShareIdea: (IdeaEntity) -> Unit,
     onCopyIdea: (IdeaEntity) -> Unit,
     onDeleteIdea: (IdeaEntity) -> Unit,
-    folders: List<FolderEntity>,
+    loadedFolders: List<FolderEntity>?,
     onCreateFolder: (String) -> Unit,
     onMoveIdeaToFolder: (IdeaEntity, Long?) -> Unit,
     onDeleteFolder: (FolderEntity) -> Unit,
@@ -106,6 +108,7 @@ internal fun HomeScreen(
     var searchQuery by rememberSaveable {
         mutableStateOf("")
     }
+    var ideaOrder by rememberSaveable { mutableStateOf(IdeaOrder.Newest) }
 
     var ideaPendingDeletion by remember {
         mutableStateOf<IdeaEntity?>(null)
@@ -119,12 +122,23 @@ internal fun HomeScreen(
         mutableStateOf(false)
     }
 
-    var selectedFolderId by remember {
+    var savedFolderId by rememberSaveable {
         mutableStateOf<Long?>(null)
     }
 
-    var isUnfiledSelected by remember {
+    var isUnfiledSelected by rememberSaveable {
         mutableStateOf(false)
+    }
+
+    val folders = loadedFolders.orEmpty()
+    val requestedFolderId = savedFolderId
+    val selectedFolderId = requestedFolderId?.takeIf { id ->
+        loadedFolders == null || folders.any { it.id == id }
+    }
+    LaunchedEffect(requestedFolderId, selectedFolderId) {
+        if (requestedFolderId != selectedFolderId && savedFolderId == requestedFolderId) {
+            savedFolderId = null
+        }
     }
 
     var folderPendingAction by remember {
@@ -144,29 +158,19 @@ internal fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    val folderFilteredIdeas = when {
-        isUnfiledSelected -> {
-            ideas.filter { idea ->
-                idea.folderId == null
-            }
-        }
-
-        selectedFolderId != null -> {
-            ideas.filter { idea ->
-                idea.folderId == selectedFolderId
-            }
-        }
-
-        else -> {
-            ideas
+    val folderFilteredIdeas = remember(ideas, isUnfiledSelected, selectedFolderId) {
+        when {
+            isUnfiledSelected -> ideas.filter { it.folderId == null }
+            selectedFolderId != null -> ideas.filter { it.folderId == selectedFolderId }
+            else -> ideas
         }
     }
 
-    val filteredIdeas = folderFilteredIdeas.filter { idea ->
-        idea.text.contains(
-            searchQuery,
-            ignoreCase = true
-        )
+    val filteredIdeas = remember(folderFilteredIdeas, searchQuery) {
+        folderFilteredIdeas.filter { it.text.contains(searchQuery, ignoreCase = true) }
+    }
+    val visibleIdeas = remember(filteredIdeas, ideaOrder) {
+        orderIdeas(filteredIdeas, ideaOrder)
     }
 
     val folderContentKey = when {
@@ -357,40 +361,43 @@ internal fun HomeScreen(
 
             VoicePocketDimens.SpaceL
 
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { newQuery ->
-                    searchQuery = newQuery
-                },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                label = {
-                    Text("Buscar ideas")
-                },
-                placeholder = {
-                    Text("Escribe una palabra")
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotEmpty()) {
-                        IconButton(
-                            onClick = {
-                                searchQuery = ""
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { newQuery ->
+                        searchQuery = newQuery
+                    },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    label = {
+                        Text("Buscar ideas")
+                    },
+                    placeholder = {
+                        Text("Escribe una palabra")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    searchQuery = ""
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Clear,
+                                    contentDescription = "Limpiar búsqueda"
+                                )
                             }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Clear,
-                                contentDescription = "Limpiar búsqueda"
-                            )
                         }
                     }
-                }
-            )
+                )
+                IdeaOrderMenu(ideaOrder) { ideaOrder = it }
+            }
             Spacer(
                 modifier = Modifier.height(
                     VoicePocketDimens.SpaceS
@@ -402,15 +409,15 @@ internal fun HomeScreen(
                 selectedFolderId = selectedFolderId,
                 isUnfiledSelected = isUnfiledSelected,
                 onAllClick = {
-                    selectedFolderId = null
+                    savedFolderId = null
                     isUnfiledSelected = false
                 },
                 onUnfiledClick = {
-                    selectedFolderId = null
+                    savedFolderId = null
                     isUnfiledSelected = true
                 },
                 onFolderClick = { folder ->
-                    selectedFolderId = folder.id
+                    savedFolderId = folder.id
                     isUnfiledSelected = false
                 },
                 onCreateFolderClick = {
@@ -460,14 +467,15 @@ internal fun HomeScreen(
                             })
                 },
                 label = "FolderContentTransition"
-            ) {
-                val listState = rememberLazyListState()
+            ) { contentKey ->
+                val listState = key(ideaOrder) { rememberLazyListState() }
 
-                LaunchedEffect(savedIdeaToReveal, ideas) {
+                LaunchedEffect(savedIdeaToReveal, ideas, visibleIdeas, contentKey, folderContentKey) {
                     val savedId = savedIdeaToReveal ?: return@LaunchedEffect
+                    if (contentKey != folderContentKey) return@LaunchedEffect
                     if (ideas.none { it.id == savedId }) return@LaunchedEffect
 
-                    val index = filteredIdeas.indexOfFirst { it.id == savedId }
+                    val index = visibleIdeas.indexOfFirst { it.id == savedId }
                     if (index >= 0) listState.animateScrollToItem(index)
                     savedIdeaToReveal = null
                 }
@@ -506,7 +514,7 @@ internal fun HomeScreen(
                     }
                 }
 
-                filteredIdeas.isEmpty() -> {
+                visibleIdeas.isEmpty() -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -545,7 +553,7 @@ internal fun HomeScreen(
                         )
                     ) {
                         items(
-                            items = filteredIdeas,
+                            items = visibleIdeas,
                             key = { idea -> idea.id }
                         ) { idea ->
                             IdeaCard(
@@ -657,7 +665,7 @@ internal fun HomeScreen(
                 onDeleteFolder(folder)
 
                 if (selectedFolderId == folder.id) {
-                    selectedFolderId = null
+                    savedFolderId = null
                     isUnfiledSelected = true
                 }
 

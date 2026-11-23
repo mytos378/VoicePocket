@@ -10,6 +10,7 @@ import com.roberto.voicepocket.data.local.IdeaDraftStore
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -40,12 +41,12 @@ internal class HomeViewModel(
             initialValue = emptyList()
         )
 
-    val folders = folderDao
+    val folders: StateFlow<List<FolderEntity>?> = folderDao
         .getAllFolders()
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList()
+            initialValue = null
         )
 
     fun createFolder(name: String) {

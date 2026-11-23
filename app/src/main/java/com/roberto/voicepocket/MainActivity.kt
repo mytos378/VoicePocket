@@ -49,7 +49,7 @@ class MainActivity : ComponentActivity() {
                 HomeScreen(
                     lifecycle = this@MainActivity.lifecycle,
                     ideas = ideas,
-                    folders = folders,
+                    loadedFolders = folders,
                     ideaSaveState = ideaSaveState,
                     onIdeaRecognized = homeViewModel::saveIdea,
                     onRetryIdeaSave = homeViewModel::retryIdeaSave,

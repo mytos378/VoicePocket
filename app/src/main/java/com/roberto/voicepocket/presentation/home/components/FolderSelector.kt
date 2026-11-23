@@ -21,6 +21,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -95,7 +97,7 @@ private fun FolderFilterChip(
     onLongClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.combinedClickable(
+        modifier = Modifier.semantics { this.selected = selected }.combinedClickable(
             onClick = onClick,
             onLongClick = onLongClick
         ),
